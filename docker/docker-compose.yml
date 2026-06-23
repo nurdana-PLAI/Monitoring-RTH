@@ -1,0 +1,243 @@
+version: '3.9'
+
+services:
+  questdb:
+    container_name: questdb
+    image: questdb/questdb:9.2.2
+    hostname: quest
+    ports:
+      - 9000:9000
+      - 9009:9009 # ILP port for high-speed ingest
+      - 8812:8812
+      - 9003:9003
+    volumes:
+      - ./data/questdb:/var/lib/questdb
+    environment:
+      - TZ=Asia/Jakarta
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.50
+
+  questdb-init:
+    image: postgres:15-alpine
+    container_name: questdb-init
+    depends_on:
+      - questdb
+    volumes:
+      - ./data/questdb/init/init.sql:/init.sql
+    environment:
+      - PGPASSWORD=quest
+      - TZ=Asia/Jakarta
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for QuestDB Postgres Wire (port 8812) to be ready...'
+        # pg_isready adalah tool bawaan postgres untuk mengecek koneksi DB
+        until pg_isready -h questdb -p 8812 -U admin; do
+          sleep 2
+        done
+        echo 'QuestDB is up. Executing DDL via psql...'
+        # Eksekusi file SQL menggunakan psql
+        psql -h questdb -p 8812 -U admin -d qdb -f /init.sql
+        echo 'DDL executed successfully.'
+      "
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.51
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana-oss:latest
+    hostname: grafana
+    environment:
+      - TZ=Asia/Jakarta
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+    ports:
+      - 3000:3000
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.30
+
+  nodered:
+    container_name: nodered
+    image: nodered/node-red:latest
+    hostname: modeled
+    environment:
+      - TZ=Asia/Jakarta
+    ports:
+      - 1880:1880
+    volumes:
+      - ./data/nodered:/data
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.40
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9001:9001" # Console
+      - "9002:9002" # API
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./data/minio:/data
+    command: server /data --console-address ":9001" --address ":9002"
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.70
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      sh -c "
+        echo 'Waiting for MinIO...'
+        until mc alias set local http://172.16.0.70:9002 minioadmin minioadmin; do sleep 2; done
+        echo 'Creating bucket...'
+        mc mb --ignore-existing local/green-infra-data
+        echo 'Bucket ready.'
+      "
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.71
+
+  nanomq:
+    image: emqx/nanomq:latest
+    container_name: nanomq
+    ports:
+      - "1883:1883"
+    environment:
+      - NANOMQ_CONF_PATH=/etc/nanomq.conf
+      - TZ=Asia/Jakarta
+    volumes:
+      - ./data/nanomq/configs/nanomq.conf:/etc/nanomq.conf
+      - ./data/nanomq/data:/data
+    command: ["nanomq", "start", "--conf", "/etc/nanomq.conf"]
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.90
+
+  redpanda-0:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+    image: docker.redpanda.com/redpandadata/redpanda:v25.3.7
+    container_name: redpanda-0
+    volumes:
+      - ./data/rp-0:/var/lib/redpanda/data
+    environment:
+      - TZ=Asia/Jakarta
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.130
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+
+  console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console:v3.5.2
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.140
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda-0:9092"]
+        schemaRegistry:
+          enabled: true
+          urls: ["http://redpanda-0:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda-0:9644"]
+    ports:
+      - 8080:8080
+    depends_on:
+      - redpanda-0
+  
+  # redpanda-connect:
+  #   image: docker.redpanda.com/redpandadata/connect:latest
+  #   container_name: redpanda-connect
+  #   volumes:
+  #     - ./data/rp-connect/connect-config.yaml:/connect-config.yaml
+  #   command: ["-c", "/connect-config.yaml"]
+  #   ports:
+  #     - "4195:4195"
+  #   networks:
+  #     ugi-net:
+  #       ipv4_address: 172.16.0.150
+  #   depends_on:
+  #     - redpanda-0
+  
+  redpanda-connect-sink-db:
+    image: docker.redpanda.com/redpandadata/connect:latest
+    container_name: redpanda-connect-sink-db
+    volumes:
+      - ./data/rp-connect-sink/connect-db-config.yaml:/connect-config.yaml
+    command: ["-c", "/connect-config.yaml"]
+    ports:
+      - "4196:4195"
+    depends_on:
+      - redpanda-0
+      - questdb
+      - minio
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.160
+  
+  redpanda-connect-bridge:
+    image: docker.redpanda.com/redpandadata/connect:latest
+    container_name: redpanda-connect-bridge
+    volumes:
+      - ./data/rp-connect-bridge/connect-bridge-config.yaml:/connect-config.yaml
+    command: ["-c", "/connect-config.yaml"]
+    ports:
+      - "4195:4195"
+    depends_on:
+      - nanomq
+      - redpanda-0
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.170
+
+  redpanda-connect-sink-minio:
+    image: docker.redpanda.com/redpandadata/connect:latest
+    container_name: redpanda-connect-sink-minio
+    volumes:
+      - ./data/rp-connect-sink/connect-minio-config.yaml:/connect-config.yaml
+    command: ["-c", "/connect-config.yaml"]
+    ports:
+      - "4197:4195"
+    depends_on:
+      - redpanda-0
+      - minio
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.180
+
+networks:
+  ugi-net:
+    ipam:
+      driver: default
+      config:
+       - subnet: "172.16.0.0/24"

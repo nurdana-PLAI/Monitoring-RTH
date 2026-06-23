@@ -1,0 +1,6 @@
+conf/*
+db/*
+import/*
+public/*
+!init/init.sql
+!.gitignore
