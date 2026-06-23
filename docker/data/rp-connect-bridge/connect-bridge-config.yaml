@@ -1,0 +1,18 @@
+http:
+  enabled: true
+  address: "0.0.0.0:4195"
+
+input:
+  mqtt:
+    urls: 
+      - "tcp://nanomq:1883"
+    topics: 
+      - "smartenv/#"
+    client_id: "rp-connect-bridge"
+
+output:
+  redpanda:
+    seed_brokers: ["redpanda-0:9092"]
+    topic: raw_telemetry
+    key: ${! json("loc_id") }
+    compression: snappy

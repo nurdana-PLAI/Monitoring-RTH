@@ -1,0 +1,119 @@
+[
+    {
+        "id": "555cdb144dd52a22",
+        "type": "tab",
+        "label": "FL_Generate_Data",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "broker_nanomq",
+        "type": "mqtt-broker",
+        "name": "docker-nanomq",
+        "broker": "172.16.0.90",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "inject_sensor_sim",
+        "type": "inject",
+        "z": "555cdb144dd52a22",
+        "name": "Trigger (Adjust Frequency Here)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 370,
+        "y": 200,
+        "wires": [
+            [
+                "generate_payload"
+            ]
+        ]
+    },
+    {
+        "id": "generate_payload",
+        "type": "function",
+        "z": "555cdb144dd52a22",
+        "name": "Generate Realistic Sensor Data",
+        "func": "// Get current time in milliseconds (13 digits)\nconst ts_ms = Date.now();\n\n// Convert to nanoseconds (19 digits) by appending zeros as a string\n// This avoids JavaScript math precision loss\nconst ts_nanoseconds = ts_ms.toString() + \"000000\";\n\n// Convert to integer (BigInt is not needed, JS will parse this fine up to 19 digits for string formatting)\nconst ts_int = parseInt(ts_nanoseconds);\n\n// Generate realistic random values for Indonesian green infrastructure\nconst temperature = (Math.random() * 9.5 + 26.0).toFixed(2); // 26.0 to 35.5 °C\nconst humidity = (Math.random() * 35.0 + 60.0).toFixed(2);   // 60.0 to 95.0 %\nconst soil_humidity = (Math.random() * 40.0 + 30.0).toFixed(2); // 30.0 to 70.0 %\nconst pm25 = (Math.random() * 50.0 + 15.0).toFixed(2);       // 15.0 to 65.0 ug/m3\n\nmsg.payload = {\n    \"ts\": ts_int,\n    \"loc_id\": \"JKT-01\",\n    \"readings\": [\n        {\n            \"sensor_id\": \"S-TEMP-01\",\n            \"type\": \"temperature\",\n            \"unit\": \"C\",\n            \"val\": parseFloat(temperature)\n        },\n        {\n            \"sensor_id\": \"S-HUM-01\",\n            \"type\": \"humidity\",\n            \"unit\": \"%\",\n            \"val\": parseFloat(humidity)\n        },\n        {\n            \"sensor_id\": \"S-SOIL-01\",\n            \"type\": \"soil_humidity\",\n            \"unit\": \"%\",\n            \"val\": parseFloat(soil_humidity)\n        },\n        {\n            \"sensor_id\": \"S-PM25-01\",\n            \"type\": \"pm25\",\n            \"unit\": \"ug/m3\",\n            \"val\": parseFloat(pm25)\n        }\n    ]\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 320,
+        "wires": [
+            [
+                "debug_output",
+                "mqtt_publish"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_publish",
+        "type": "mqtt out",
+        "z": "555cdb144dd52a22",
+        "name": "Publish to NanoMQ",
+        "topic": "sensors/park_01",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "broker_nanomq",
+        "x": 680,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "debug_output",
+        "type": "debug",
+        "z": "555cdb144dd52a22",
+        "name": "Debug Payload",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 660,
+        "y": 440,
+        "wires": []
+    }
+]

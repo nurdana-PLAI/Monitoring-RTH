@@ -1,0 +1,61 @@
+http:
+  enabled: true
+  address: "0.0.0.0:4195"
+
+input:
+  # mqtt:
+  #   urls: 
+  #     - "tcp://nanomq:1883"
+  #   topics: 
+  #     - "smartenv/#"
+  #   client_id: "rp-connect-sink"
+  redpanda:
+    seed_brokers: ["redpanda-0:9092"]
+    topics: ["raw_telemetry"]
+    consumer_group: "rp-connect-sink-group"
+
+pipeline:
+  processors:
+    # 1. Explicitly parse the incoming Node-RED string into a JSON object
+    - bloblang: |
+        if this.type() == "string" {
+          root = this.parse_json()
+        }
+        
+    # 2. Capture root values and map the array
+    - bloblang: |
+        let ts_val = this.ts
+        let loc_val = this.loc_id
+        
+        root = this.readings.map_each(r -> {
+          "timestamp": $ts_val,
+          "loc_id": $loc_val,
+          "sensor_id": r.sensor_id,
+          "sensor_type": r.type,
+          "unit": r.unit,
+          "value": r.val
+        })
+    # 3. Split the array into individual messages
+    - unarchive:
+        format: json_array
+    # 4. Generate InfluxDB Line Protocol (ILP) for QuestDB
+    # We append the timestamp as a string to avoid %d formatting issues
+    - bloblang: |
+        root = "sensor_readings,loc_id=%s,sensor_id=%s,sensor_type=%s,unit=%s value=%f ".format(
+          this.loc_id.string() | "unknown", 
+          this.sensor_id.string() | "unknown", 
+          this.sensor_type.string() | "unknown", 
+          this.unit.string() | "unknown", 
+          this.value.float64() | 0.0
+        ) + (this.timestamp.int64() | 0).string()
+
+output:
+  broker:
+    pattern: fan_out
+    outputs:
+      - stdout:
+          codec: lines
+      - http_client:
+          url: "http://questdb:9000/write?db=qdb"
+          verb: POST
+          max_in_flight: 64

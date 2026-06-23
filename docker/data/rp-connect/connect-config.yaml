@@ -1,0 +1,58 @@
+http:
+  enabled: true
+  address: "0.0.0.0:4195"
+
+input:
+  mqtt:
+    urls: 
+      - "tcp://nanomq:1883"
+    topics: 
+      - "smartenv/#"
+    client_id: "rp-connect-bridge"
+
+pipeline:
+  processors:
+    # Map the incoming JSON array to individual sensor reading objects
+    - bloblang: |
+        root = this.readings.map_each(r -> {
+          "timestamp": r.ts,
+          "loc_id": r.loc_id,
+          "sensor_id": r.sensor_id,
+          "sensor_type": r.type,
+          "unit": r.unit,
+          "value": r.val
+        })
+    # Split the array into individual messages so each sensor reading is processed independently
+    - unarchive:
+        format: json_array
+
+output:
+  broker:
+    pattern: fan_out
+    outputs:
+      # Path 1: Publish raw sensor readings to Redpanda
+      - redpanda:
+          seed_brokers: ["redpanda-0:9092"]
+          topic: sensor_readings
+          key: ${! json("sensor_id") }
+          compression: snappy
+
+      # Path 2: Apply Fuzzy Logic and publish inference results to Redpanda
+      - redpanda:
+          seed_brokers: ["redpanda-0:9092"]
+          topic: inference_results
+          key: ${! json("sensor_id") }
+          compression: snappy
+          processors:
+            - bloblang: |
+                temp_val = if this.sensor_type == "temperature" { this.value } else { 0.0 }
+                soil_val = if this.sensor_type == "soil_humidity" { this.value } else { 0.0 }
+
+                root = {
+                  "timestamp": this.timestamp,
+                  "model": "fuzzy_basic",
+                  "sensor_id": this.sensor_id,
+                  "state_label": if temp_val > 35.0 && soil_val < 30.0 { "Hot_and_Dry" } else if temp_val > 35.0 { "Hot" } else if soil_val < 30.0 { "Dry" } else { "Normal" },
+                  "confidence_score": 0.85,
+                  "reason": if temp_val > 35.0 && soil_val < 30.0 { "HighTempLowSoil" } else { "WithinThresholds" }
+                }
