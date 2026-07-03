@@ -8,6 +8,22 @@
         "env": []
     },
     {
+        "id": "54179397647dbcc3",
+        "type": "tab",
+        "label": "Latest API",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "dab6edf519d82253",
+        "type": "tab",
+        "label": "Sensor",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "broker_nanomq",
         "type": "mqtt-broker",
         "name": "docker-nanomq",
@@ -65,7 +81,7 @@
         "type": "function",
         "z": "555cdb144dd52a22",
         "name": "Generate Realistic Sensor Data",
-        "func": "// Get current time in milliseconds (13 digits)\nconst ts_ms = Date.now();\n\n// Convert to nanoseconds (19 digits) by appending zeros as a string\n// This avoids JavaScript math precision loss\nconst ts_nanoseconds = ts_ms.toString() + \"000000\";\n\n// Convert to integer (BigInt is not needed, JS will parse this fine up to 19 digits for string formatting)\nconst ts_int = parseInt(ts_nanoseconds);\n\n// Generate realistic random values for Indonesian green infrastructure\nconst temperature = (Math.random() * 9.5 + 26.0).toFixed(2); // 26.0 to 35.5 °C\nconst humidity = (Math.random() * 35.0 + 60.0).toFixed(2);   // 60.0 to 95.0 %\nconst soil_humidity = (Math.random() * 40.0 + 30.0).toFixed(2); // 30.0 to 70.0 %\nconst pm25 = (Math.random() * 50.0 + 15.0).toFixed(2);       // 15.0 to 65.0 ug/m3\n\nmsg.payload = {\n    \"ts\": ts_int,\n    \"loc_id\": \"JKT-01\",\n    \"readings\": [\n        {\n            \"sensor_id\": \"S-TEMP-01\",\n            \"type\": \"temperature\",\n            \"unit\": \"C\",\n            \"val\": parseFloat(temperature)\n        },\n        {\n            \"sensor_id\": \"S-HUM-01\",\n            \"type\": \"humidity\",\n            \"unit\": \"%\",\n            \"val\": parseFloat(humidity)\n        },\n        {\n            \"sensor_id\": \"S-SOIL-01\",\n            \"type\": \"soil_humidity\",\n            \"unit\": \"%\",\n            \"val\": parseFloat(soil_humidity)\n        },\n        {\n            \"sensor_id\": \"S-PM25-01\",\n            \"type\": \"pm25\",\n            \"unit\": \"ug/m3\",\n            \"val\": parseFloat(pm25)\n        }\n    ]\n};\n\nreturn msg;",
+        "func": "// Get current time in milliseconds (13 digits)\nconst ts_ms = Date.now();\n\n// Convert to nanoseconds (19 digits) by appending zeros as a string\n// This avoids JavaScript math precision loss\nconst ts_nanoseconds = ts_ms.toString() + \"000000\";\n\n// Convert to integer (BigInt is not needed, JS will parse this fine up to 19 digits for string formatting)\nconst ts_int = parseInt(ts_nanoseconds);\n\n// Generate realistic random values for Indonesian green infrastructure\nconst temperature = (Math.random() * 9.5 + 26.0).toFixed(2); // 26.0 to 35.5 °C\nconst humidity = (Math.random() * 35.0 + 60.0).toFixed(2);   // 60.0 to 95.0 %\nconst soil_humidity = (Math.random() * 40.0 + 30.0).toFixed(2); // 30.0 to 70.0 %\nconst pm25 = (Math.random() * 50.0 + 15.0).toFixed(2);       // 15.0 to 65.0 ug/m3\n\nmsg.payload = {\n    \"ts\": ts_int,\n    \"loc_id\": \"JKT-NodeRED\",\n    \"readings\": [\n        {\n            \"sensor_id\": \"S-TEMP-01\",\n            \"type\": \"temperature\",\n            \"unit\": \"C\",\n            \"val\": parseFloat(temperature)\n        },\n        {\n            \"sensor_id\": \"S-HUM-01\",\n            \"type\": \"humidity\",\n            \"unit\": \"%\",\n            \"val\": parseFloat(humidity)\n        },\n        {\n            \"sensor_id\": \"S-SOIL-01\",\n            \"type\": \"soil_humidity\",\n            \"unit\": \"%\",\n            \"val\": parseFloat(soil_humidity)\n        },\n        {\n            \"sensor_id\": \"S-PM25-01\",\n            \"type\": \"pm25\",\n            \"unit\": \"ug/m3\",\n            \"val\": parseFloat(pm25)\n        }\n    ]\n};\n\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -86,7 +102,7 @@
         "type": "mqtt out",
         "z": "555cdb144dd52a22",
         "name": "Publish to NanoMQ",
-        "topic": "sensors/park_01",
+        "topic": "smartenv/data",
         "qos": "1",
         "retain": "false",
         "respTopic": "",
@@ -115,5 +131,191 @@
         "x": 660,
         "y": 440,
         "wires": []
+    },
+    {
+        "id": "aba1726303ba1a72",
+        "type": "http in",
+        "z": "54179397647dbcc3",
+        "name": "API Latest",
+        "url": "/api/latest",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 360,
+        "y": 220,
+        "wires": [
+            [
+                "db64d626310d7aca"
+            ]
+        ]
+    },
+    {
+        "id": "db64d626310d7aca",
+        "type": "function",
+        "z": "54179397647dbcc3",
+        "name": "function 1",
+        "func": "const query = `\nSELECT\n    max(timestamp) AS timestamp,\n    max(CASE WHEN sensor_type='temperature' THEN value END) AS temperature,\n    max(CASE WHEN sensor_type='humidity' THEN value END) AS humidity,\n    max(CASE WHEN sensor_type='soil_humidity' THEN value END) AS soil_humidity,\n    max(CASE WHEN sensor_type='pm25' THEN value END) AS pm25\nFROM sensor_readings\nWHERE timestamp = (\n    SELECT max(timestamp)\n    FROM sensor_readings\n)\n`;\n\nmsg.method = \"GET\";\n\n// Untuk sementara gunakan IP server\nmsg.url = \"http://172.16.10.146:9000/exec?query=\" + encodeURIComponent(query);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 320,
+        "wires": [
+            [
+                "7568f854d6a95230"
+            ]
+        ]
+    },
+    {
+        "id": "569693889d0c338d",
+        "type": "http response",
+        "z": "54179397647dbcc3",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 410,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "7568f854d6a95230",
+        "type": "http request",
+        "z": "54179397647dbcc3",
+        "name": "",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 330,
+        "y": 400,
+        "wires": [
+            [
+                "4a7a02e32104aabc"
+            ]
+        ]
+    },
+    {
+        "id": "4a7a02e32104aabc",
+        "type": "function",
+        "z": "54179397647dbcc3",
+        "name": "function 2",
+        "func": "const row = msg.payload.dataset[0];\n\nmsg.payload = {\n    timestamp: row[0],\n    temperature: row[1],\n    humidity: row[2],\n    soil_humidity: row[3],\n    pm25: row[4]\n};\n\nmsg.headers = {\n    \"Access-Control-Allow-Origin\": \"*\",\n    \"Access-Control-Allow-Methods\": \"GET\",\n    \"Access-Control-Allow-Headers\": \"Content-Type\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 460,
+        "wires": [
+            [
+                "569693889d0c338d"
+            ]
+        ]
+    },
+    {
+        "id": "6e8d0618c827a199",
+        "type": "http in",
+        "z": "dab6edf519d82253",
+        "name": "API Latest",
+        "url": "/api/history",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 860,
+        "y": 300,
+        "wires": [
+            [
+                "1ffa608cae3f63da"
+            ]
+        ]
+    },
+    {
+        "id": "d164f35b30b2030b",
+        "type": "function",
+        "z": "dab6edf519d82253",
+        "name": "function 4",
+        "func": "const rows = msg.payload.dataset || [];\n\nmsg.payload = rows.map(row => ({\n    timestamp: row[0],\n    value: row[1]\n}));\n\nmsg.headers = {\n    \"Access-Control-Allow-Origin\": \"*\",\n    \"Access-Control-Allow-Methods\": \"GET\",\n    \"Access-Control-Allow-Headers\": \"Content-Type\"\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 560,
+        "wires": [
+            [
+                "239c378813550bd9"
+            ]
+        ]
+    },
+    {
+        "id": "239c378813550bd9",
+        "type": "http response",
+        "z": "dab6edf519d82253",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 910,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "5fc9d4b2681c94fe",
+        "type": "http request",
+        "z": "dab6edf519d82253",
+        "name": "",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 830,
+        "y": 480,
+        "wires": [
+            [
+                "d164f35b30b2030b"
+            ]
+        ]
+    },
+    {
+        "id": "1ffa608cae3f63da",
+        "type": "function",
+        "z": "dab6edf519d82253",
+        "name": "function 3",
+        "func": "// Ambil parameter sensor dari URL\nconst sensor = msg.req.query.sensor || \"temperature\";\n\n// Daftar sensor yang diizinkan\nconst allowedSensors = [\n    \"temperature\",\n    \"humidity\",\n    \"soil_humidity\",\n    \"pm25\"\n];\n\n// Validasi agar tidak bisa diisi sembarang query\nif (!allowedSensors.includes(sensor)) {\n    msg.statusCode = 400;\n    msg.payload = {\n        error: \"Sensor tidak valid\"\n    };\n    return msg;\n}\n\nconst query = `\nSELECT\n    timestamp,\n    value\nFROM sensor_readings\nWHERE sensor_type='${sensor}'\nAND timestamp >= dateadd('h', -24, now())\nORDER BY timestamp\n`;\n\nmsg.method = \"GET\";\nmsg.url = \"http://172.16.10.146:9000/exec?query=\" + encodeURIComponent(query);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 840,
+        "y": 400,
+        "wires": [
+            [
+                "5fc9d4b2681c94fe"
+            ]
+        ]
     }
 ]
