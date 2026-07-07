@@ -234,6 +234,19 @@ services:
     networks:
       ugi-net:
         ipv4_address: 172.16.0.180
+  
+  web:
+    image: nginx:alpine-slim
+    container_name: nginx_fast
+    ports:
+      - "80:80"
+    volumes:
+      - ./../frontend:/usr/share/nginx/html
+      - ./data/nginx/nginx.conf:/etc/nginx/nginx.conf
+    restart: always
+    networks:
+      ugi-net:
+        ipv4_address: 172.16.0.190
 
 networks:
   ugi-net:
