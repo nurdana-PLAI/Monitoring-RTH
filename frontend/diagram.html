@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edge-to-Cloud Streaming Data Pipeline</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg: #060b18;
+      --surface: #0c1222;
+      --border: #1a2744;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --sensor: #00e5a0;
+      --gateway: #a78bfa;
+      --mqtt: #8b5cf6;
+      --redpanda: #e63462;
+      --questdb: #38bdf8;
+      --minio-c: #ef4444;
+      --dashboard: #f59e0b;
+      --network: #f59e0b;
+      --flow-edge: #00e5a0;
+      --flow-cross: #f59e0b;
+      --flow-cloud: #00e5a0;
+      --flow-mgmt: #475569;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image:
+        linear-gradient(rgba(26,39,68,0.22) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(26,39,68,0.22) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+
+    /* ── Header ── */
+    .page-header {
+      text-align: center;
+      padding: 48px 24px 12px;
+    }
+    .page-header h1 {
+      font-size: clamp(1.3rem, 3vw, 1.8rem);
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+    .page-header p {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      letter-spacing: 1px;
+    }
+
+    /* ── Zone ── */
+    .zone {
+      position: relative;
+      border-radius: 16px;
+      padding: 32px 28px 28px;
+      margin: 0 auto;
+      max-width: 920px;
+    }
+    .zone-edge {
+      background: radial-gradient(ellipse at 50% 0%, rgba(0,229,160,0.04) 0%, transparent 65%);
+      border: 1px solid rgba(0,229,160,0.14);
+    }
+    .zone-cloud {
+      background: radial-gradient(ellipse at 50% 100%, rgba(245,158,11,0.04) 0%, transparent 65%);
+      border: 1px solid rgba(245,158,11,0.14);
+    }
+    .zone-badge {
+      position: absolute;
+      top: -11px;
+      left: 32px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      padding: 3px 14px;
+      border-radius: 6px;
+    }
+    .zone-edge .zone-badge {
+      background: rgba(0,229,160,0.12);
+      color: var(--sensor);
+      border: 1px solid rgba(0,229,160,0.25);
+    }
+    .zone-cloud .zone-badge {
+      background: rgba(245,158,11,0.12);
+      color: var(--dashboard);
+      border: 1px solid rgba(245,158,11,0.25);
+    }
+    .zone-subtitle {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Component Base ── */
+    .comp {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      text-align: center;
+      cursor: default;
+      transition: transform 0.25s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+      min-width: 130px;
+    }
+    .comp:hover {
+      transform: translateY(-2px);
+    }
+    .comp i {
+      font-size: 1.1rem;
+      margin-bottom: 4px;
+      display: block;
+    }
+    .comp .comp-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .comp .comp-sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* Active indicator */
+    .comp::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.7;
+    }
+    .comp::after {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse-ring 2s ease-out infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 0.6; }
+      100% { transform: scale(3.5); opacity: 0; }
+    }
+
+    /* ── Component Variants ── */
+    .comp-sensor {
+      color: var(--sensor);
+      border-color: rgba(0,229,160,0.2);
+      min-width: 110px;
+      padding: 12px 14px;
+    }
+    .comp-sensor:hover {
+      border-color: rgba(0,229,160,0.5);
+      box-shadow: 0 0 20px rgba(0,229,160,0.08);
+    }
+    .comp-sensor i { font-size: 1rem; }
+    .comp-sensor .comp-name { font-size: 0.72rem; font-weight: 500; }
+
+    .comp-gateway {
+      color: var(--gateway);
+      border-color: rgba(167,139,250,0.25);
+      min-width: 260px;
+      padding: 16px 20px;
+    }
+    .comp-gateway:hover {
+      border-color: rgba(167,139,250,0.5);
+      box-shadow: 0 0 24px rgba(167,139,250,0.08);
+    }
+    .gateway-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .gateway-subs {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .sub-comp {
+      background: rgba(167,139,250,0.06);
+      border: 1px solid rgba(167,139,250,0.15);
+      border-radius: 7px;
+      padding: 8px 12px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sub-comp-mqtt { color: var(--mqtt); }
+    .sub-comp-mqtt { border-color: rgba(139,92,246,0.2); background: rgba(139,92,246,0.06); }
+    .sub-comp-rpc { color: var(--redpanda); border-color: rgba(230,52,98,0.2); background: rgba(230,52,98,0.06); }
+    .sub-arrow {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.65rem;
+      margin: -2px 0;
+    }
+
+    .comp-broker {
+      color: var(--redpanda);
+      border-color: rgba(230,52,98,0.25);
+      min-width: 200px;
+    }
+    .comp-broker:hover {
+      border-color: rgba(230,52,98,0.5);
+      box-shadow: 0 0 24px rgba(230,52,98,0.1);
+    }
+
+    .comp-console {
+      color: var(--redpanda);
+      border-color: rgba(230,52,98,0.15);
+      min-width: 180px;
+      opacity: 0.8;
+    }
+    .comp-console:hover {
+      opacity: 1;
+      border-color: rgba(230,52,98,0.4);
+    }
+    .comp-console::before, .comp-console::after { display: none; }
+
+    .comp-sink-db {
+      color: var(--questdb);
+      border-color: rgba(56,189,248,0.2);
+      min-width: 190px;
+    }
+    .comp-sink-db:hover {
+      border-color: rgba(56,189,248,0.45);
+      box-shadow: 0 0 20px rgba(56,189,248,0.08);
+    }
+
+    .comp-sink-minio {
+      color: var(--minio-c);
+      border-color: rgba(239,68,68,0.2);
+      min-width: 190px;
+    }
+    .comp-sink-minio:hover {
+      border-color: rgba(239,68,68,0.45);
+      box-shadow: 0 0 20px rgba(239,68,68,0.08);
+    }
+
+    .comp-questdb {
+      color: var(--questdb);
+      border-color: rgba(56,189,248,0.2);
+      min-width: 190px;
+    }
+    .comp-questdb:hover {
+      border-color: rgba(56,189,248,0.45);
+      box-shadow: 0 0 20px rgba(56,189,248,0.08);
+    }
+
+    .comp-minio {
+      color: var(--minio-c);
+      border-color: rgba(239,68,68,0.2);
+      min-width: 190px;
+    }
+    .comp-minio:hover {
+      border-color: rgba(239,68,68,0.45);
+      box-shadow: 0 0 20px rgba(239,68,68,0.08);
+    }
+
+    .comp-dashboard {
+      color: var(--dashboard);
+      border-color: rgba(245,158,11,0.25);
+      min-width: 300px;
+    }
+    .comp-dashboard:hover {
+      border-color: rgba(245,158,11,0.5);
+      box-shadow: 0 0 24px rgba(245,158,11,0.1);
+    }
+
+    /* ── Network Divider ── */
+    .network-divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 40px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .network-line {
+      flex: 1;
+      height: 2px;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--network) 0px, var(--network) 8px,
+        transparent 8px, transparent 18px
+      );
+      background-size: 18px 2px;
+      animation: dash-scroll 1s linear infinite;
+      opacity: 0.5;
+    }
+    @keyframes dash-scroll {
+      to { background-position: 18px 0; }
+    }
+    .network-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--network);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      white-space: nowrap;
+      opacity: 0.7;
+    }
+
+    /* ── Tooltip ── */
+    #tooltip {
+      position: fixed;
+      z-index: 1000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      max-width: 320px;
+      background: #111827;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    }
+    #tooltip.visible { opacity: 1; }
+    .tip-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .tip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .tip-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .tip-divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 8px;
+    }
+    .tip-row {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      line-height: 1.7;
+    }
+    .tip-label { color: var(--text-muted); }
+    .tip-value { color: var(--text); text-align: right; }
+    .tip-desc {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      max-width: 920px;
+      margin: 28px auto 48px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.62rem;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+    .legend-line {
+      width: 32px;
+      height: 2px;
+      border-radius: 1px;
+    }
+    .legend-line.solid-teal { background: var(--flow-edge); }
+    .legend-line.solid-amber { background: var(--flow-cross); }
+    .legend-line.dashed-gray {
+      background: repeating-linear-gradient(
+        90deg, var(--flow-mgmt) 0px, var(--flow-mgmt) 5px,
+        transparent 5px, transparent 10px
+      );
+    }
+    .legend-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--sensor);
+      position: relative;
+    }
+    .legend-dot::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--sensor);
+      animation: pulse-ring 2s ease-out infinite;
+    }
+
+    /* ── SVG Overlay ── */
+    #svg-connections {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* ── Rows ── */
+    .row { display: flex; justify-content: center; gap: 20px; margin-bottom: 28px; }
+    .row-last { margin-bottom: 4px; }
+
+    /* ── Reduced Motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      .network-line { animation: none; }
+      .comp::after { animation: none; display: none; }
+      .legend-dot::after { animation: none; display: none; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .zone { padding: 28px 16px 20px; }
+      .row { gap: 10px; flex-wrap: wrap; }
+      .comp { min-width: 110px !important; padding: 10px 12px; }
+      .comp-gateway { min-width: 220px !important; }
+      .comp-dashboard { min-width: 240px !important; }
+      .network-divider { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="page-header">
+    <h1>Edge-to-Cloud Streaming Data Pipeline</h1>
+    <p>Real-time IoT sensor ingestion &middot; Event streaming &middot; Time-series analytics</p>
+  </header>
+
+  <!-- Diagram Container -->
+  <main id="diagram" style="position:relative; max-width:920px; margin:0 auto; padding:8px 0 0;">
+
+    <!-- ════════ EDGE ZONE ════════ -->
+    <section class="zone zone-edge" id="edge-zone">
+      <div class="zone-badge">Edge Layer</div>
+      <div class="zone-subtitle">On-Premises / Field Deployment</div>
+
+      <!-- Sensors -->
+      <div class="row">
+        <div class="comp comp-sensor" id="s-temp" data-key="sensor-temp">
+          <i class="fas fa-thermometer-half"></i>
+          <div class="comp-name">Temperature</div>
+        </div>
+        <div class="comp comp-sensor" id="s-press" data-key="sensor-pressure">
+          <i class="fas fa-gauge-high"></i>
+          <div class="comp-name">Pressure</div>
+        </div>
+        <div class="comp comp-sensor" id="s-vib" data-key="sensor-vibration">
+          <i class="fas fa-wave-square"></i>
+          <div class="comp-name">Vibration</div>
+        </div>
+        <div class="comp comp-sensor" id="s-hum" data-key="sensor-humidity">
+          <i class="fas fa-droplet"></i>
+          <div class="comp-name">Humidity</div>
+        </div>
+      </div>
+
+      <!-- Edge Gateway -->
+      <div class="row row-last">
+        <div class="comp comp-gateway" id="edge-gateway" data-key="edge-gateway">
+          <div class="gateway-title">
+            <i class="fas fa-server"></i> Edge Gateway
+          </div>
+          <div class="gateway-subs">
+            <div class="sub-comp sub-comp-mqtt">
+              <i class="fas fa-right-left"></i> MQTT Broker
+              <span style="margin-left:auto; font-size:0.58rem; opacity:0.6;">(e.g. Mosquitto)</span>
+            </div>
+            <div class="sub-arrow"><i class="fas fa-arrow-down" style="font-size:0.55rem;"></i></div>
+            <div class="sub-comp sub-comp-rpc">
+              <i class="fas fa-shuffle"></i> Redpanda Connect
+              <span style="margin-left:auto; font-size:0.58rem; opacity:0.6;">Source Pipeline</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════ NETWORK DIVIDER ════════ -->
+    <div class="network-divider">
+      <div class="network-line"></div>
+      <div class="network-label">
+        <i class="fas fa-lock"></i> TLS / mTLS over Public Network
+      </div>
+      <div class="network-line"></div>
+    </div>
+
+    <!-- ════════ CLOUD ZONE ════════ -->
+    <section class="zone zone-cloud" id="cloud-zone">
+      <div class="zone-badge">Cloud Layer</div>
+      <div class="zone-subtitle">Cloud Infrastructure / Data Center</div>
+
+      <!-- Redpanda Broker + Console -->
+      <div class="row">
+        <div class="comp comp-broker" id="rp-broker" data-key="redpanda-broker">
+          <i class="fas fa-stream"></i>
+          <div class="comp-name">Redpanda Broker</div>
+          <div class="comp-sub">Kafka-Compatible Streaming Platform</div>
+        </div>
+        <div class="comp comp-console" id="rp-console" data-key="redpanda-console">
+          <i class="fas fa-display"></i>
+          <div class="comp-name">Redpanda Console</div>
+          <div class="comp-sub">Cluster Management UI</div>
+        </div>
+      </div>
+
+      <!-- Sink Connectors -->
+      <div class="row">
+        <div class="comp comp-sink-db" id="rp-sink-db" data-key="rp-sink-db">
+          <i class="fas fa-shuffle"></i>
+          <div class="comp-name">Redpanda Connect</div>
+          <div class="comp-sub">Sink &rarr; QuestDB (InfluxDB LP)</div>
+        </div>
+        <div class="comp comp-sink-minio" id="rp-sink-minio" data-key="rp-sink-minio">
+          <i class="fas fa-shuffle"></i>
+          <div class="comp-name">Redpanda Connect</div>
+          <div class="comp-sub">Sink &rarr; MinIO (S3 API)</div>
+        </div>
+      </div>
+
+      <!-- Storage -->
+      <div class="row">
+        <div class="comp comp-questdb" id="questdb" data-key="questdb">
+          <i class="fas fa-database"></i>
+          <div class="comp-name">QuestDB</div>
+          <div class="comp-sub">Time-Series Database (SQL)</div>
+        </div>
+        <div class="comp comp-minio" id="minio" data-key="minio">
+          <i class="fas fa-cube"></i>
+          <div class="comp-name">MinIO</div>
+          <div class="comp-sub">S3-Compatible Object Storage</div>
+        </div>
+      </div>
+
+      <!-- Dashboard -->
+      <div class="row row-last">
+        <div class="comp comp-dashboard" id="dashboard" data-key="dashboard">
+          <i class="fas fa-chart-line"></i>
+          <div class="comp-name">Monitoring &amp; Analytics Dashboard</div>
+          <div class="comp-sub">Real-Time Visualization &middot; Historical Analysis</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SVG Connections Overlay -->
+    <svg id="svg-connections" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="glow-teal" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow-amber" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+    </svg>
+  </main>
+
+  <!-- Legend -->
+  <footer class="legend" role="contentinfo">
+    <div class="legend-item">
+      <div class="legend-line solid-teal"></div>
+      <span>Data Flow (Intra-Zone)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-line solid-amber"></div>
+      <span>Data Flow (Cross-Zone)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-line dashed-gray"></div>
+      <span>Management / Admin</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot"></div>
+      <span>Active Component</span>
+    </div>
+  </footer>
+
+  <!-- Tooltip -->
+  <div id="tooltip" role="tooltip" aria-hidden="true">
+    <div class="tip-header">
+      <div class="tip-dot" id="tip-dot"></div>
+      <div class="tip-name" id="tip-name"></div>
+    </div>
+    <div class="tip-divider"></div>
+    <div id="tip-rows"></div>
+    <div class="tip-desc" id="tip-desc"></div>
+  </div>
+
+  <script>
+    /* ══════════════════════════════════════════
+       Component Metadata
+       ══════════════════════════════════════════ */
+    const INFO = {
+      'sensor-temp': {
+        name: 'Temperature Sensor',
+        color: '#00e5a0',
+        fields: [
+          ['Technology', 'IoT Sensor Node'],
+          ['Protocol', 'MQTT v5'],
+          ['Payload', 'JSON'],
+          ['Topic', 'sensors/temperature']
+        ],
+        desc: 'Measures ambient temperature at the edge location. Publishes readings at a configurable interval to the local MQTT broker.'
+      },
+      'sensor-pressure': {
+        name: 'Pressure Sensor',
+        color: '#00e5a0',
+        fields: [
+          ['Technology', 'IoT Sensor Node'],
+          ['Protocol', 'MQTT v5'],
+          ['Payload', 'JSON'],
+          ['Topic', 'sensors/pressure']
+        ],
+        desc: 'Measures pressure readings at the edge. Used for monitoring pressurized systems or environmental barometric data.'
+      },
+      'sensor-vibration': {
+        name: 'Vibration Sensor',
+        color: '#00e5a0',
+        fields: [
+          ['Technology', 'IoT Sensor Node'],
+          ['Protocol', 'MQTT v5'],
+          ['Payload', 'JSON'],
+          ['Topic', 'sensors/vibration']
+        ],
+        desc: 'Measures vibration amplitude and frequency. Commonly used for predictive maintenance on rotating machinery.'
+      },
+      'sensor-humidity': {
+        name: 'Humidity Sensor',
+        color: '#00e5a0',
+        fields: [
+          ['Technology', 'IoT Sensor Node'],
+          ['Protocol', 'MQTT v5'],
+          ['Payload', 'JSON'],
+          ['Topic', 'sensors/humidity']
+        ],
+        desc: 'Measures relative humidity at the edge location. Critical for environmental monitoring in HVAC and agriculture.'
+      },
+      'edge-gateway': {
+        name: 'Edge Gateway',
+        color: '#a78bfa',
+        fields: [
+          ['Technology', 'Edge Compute Node'],
+          ['Internal', 'MQTT (local ingestion)'],
+          ['Egress', 'Kafka API (SASL/SCRAM)'],
+          ['Transform', 'JSON → Avro']
+        ],
+        desc: 'On-premises gateway that runs an MQTT Broker for local sensor ingestion and Redpanda Connect for protocol translation, enrichment, and secure cloud egress.'
+      },
+      'redpanda-broker': {
+        name: 'Redpanda Broker',
+        color: '#e63462',
+        fields: [
+          ['Technology', 'Distributed Streaming'],
+          ['Protocol', 'Kafka API (SASL/SCRAM)'],
+          ['Topics', 'sensor.raw, sensor.processed'],
+          ['Format', 'Avro / Protobuf']
+        ],
+        desc: 'Central event streaming backbone. Kafka-compatible broker providing durability, exactly-once semantics, log compaction, and multi-consumer fan-out.'
+      },
+      'redpanda-console': {
+        name: 'Redpanda Console',
+        color: '#e63462',
+        fields: [
+          ['Technology', 'Management UI'],
+          ['Protocol', 'Kafka Admin API'],
+          ['Features', 'Topic / Consumer / Schema'],
+          ['Access', 'Internal / VPN only']
+        ],
+        desc: 'Web-based cluster management interface for monitoring broker health, inspecting topics, managing consumer groups, and browsing the schema registry.'
+      },
+      'rp-sink-db': {
+        name: 'Redpanda Connect (Sink: QuestDB)',
+        color: '#38bdf8',
+        fields: [
+          ['Technology', 'Stream Processor'],
+          ['Input', 'Kafka Consumer API'],
+          ['Output', 'InfluxDB Line Protocol'],
+          ['Mode', 'Batch Flush (1s / 10K msgs)']
+        ],
+        desc: 'Consumes from the sensor.processed topic, transforms messages to InfluxDB Line Protocol, and batch-writes to QuestDB for high-performance time-series storage.'
+      },
+      'rp-sink-minio': {
+        name: 'Redpanda Connect (Sink: MinIO)',
+        color: '#ef4444',
+        fields: [
+          ['Technology', 'Stream Processor'],
+          ['Input', 'Kafka Consumer API'],
+          ['Output', 'S3 PutObject API'],
+          ['Format', 'Parquet / JSON (partitioned)']
+        ],
+        desc: 'Consumes from the sensor.raw topic, partitions data by date/sensor type, and writes objects to MinIO for data lake storage, batch analytics, and ML training.'
+      },
+      'questdb': {
+        name: 'QuestDB',
+        color: '#38bdf8',
+        fields: [
+          ['Technology', 'Time-Series Database'],
+          ['Ingestion', 'InfluxDB Line Protocol'],
+          ['Query', 'SQL (PostgreSQL wire)'],
+          ['Storage', 'Columnar / SIMD-optimized']
+        ],
+        desc: 'High-performance TSDB optimized for high-throughput ingest and low-latency SQL queries. Powers real-time dashboard visualizations and time-series analytics.'
+      },
+      'minio': {
+        name: 'MinIO',
+        color: '#ef4444',
+        fields: [
+          ['Technology', 'Object Storage'],
+          ['Protocol', 'S3 API (compatible)'],
+          ['Use Case', 'Data Lake / Cold Storage'],
+          ['Format', 'Parquet / JSON objects']
+        ],
+        desc: 'S3-compatible object storage acting as the data lake layer. Stores raw and processed sensor data for batch analytics, archival, compliance, and ML model training.'
+      },
+      'dashboard': {
+        name: 'Monitoring & Analytics Dashboard',
+        color: '#f59e0b',
+        fields: [
+          ['Technology', 'Visualization Platform'],
+          ['Real-Time', 'QuestDB SQL queries'],
+          ['Historical', 'MinIO object data'],
+          ['Capabilities', 'Alerts / Drill-Down / Export']
+        ],
+        desc: 'Unified monitoring interface providing real-time sensor dashboards (backed by QuestDB), historical trend analysis (backed by MinIO), alerting, and report generation.'
+      }
+    };
+
+    /* ══════════════════════════════════════════
+       Connection Definitions
+       ══════════════════════════════════════════ */
+    const CONNECTIONS = [
+      // Edge: sensors → gateway
+      { from: 's-temp',  to: 'edge-gateway', type: 'edge',   dur: 2.2 },
+      { from: 's-press', to: 'edge-gateway', type: 'edge',   dur: 2.5 },
+      { from: 's-vib',   to: 'edge-gateway', type: 'edge',   dur: 2.0 },
+      { from: 's-hum',   to: 'edge-gateway', type: 'edge',   dur: 2.7 },
+      // Cross-zone
+      { from: 'edge-gateway', to: 'rp-broker', type: 'cross', dur: 3.5 },
+      // Cloud: broker → sinks
+      { from: 'rp-broker',   to: 'rp-sink-db',   type: 'cloud', dur: 3.0 },
+      { from: 'rp-broker',   to: 'rp-sink-minio', type: 'cloud', dur: 3.2 },
+      // Cloud: sinks → storage
+      { from: 'rp-sink-db',   to: 'questdb', type: 'cloud', dur: 2.2 },
+      { from: 'rp-sink-minio', to: 'minio',   type: 'cloud', dur: 2.4 },
+      // Cloud: storage → dashboard
+      { from: 'questdb', to: 'dashboard', type: 'cloud', dur: 3.0 },
+      { from: 'minio',   to: 'dashboard', type: 'cloud', dur: 3.3 },
+      // Management (dashed, no particles)
+      { from: 'rp-console', to: 'rp-broker', type: 'mgmt', dur: 0 }
+    ];
+
+    const COLORS = {
+      edge:  { stroke: 'rgba(0,229,160,0.18)',  particle: '#00e5a0', filter: 'glow-teal' },
+      cross: { stroke: 'rgba(245,158,11,0.22)', particle: '#f59e0b', filter: 'glow-amber' },
+      cloud: { stroke: 'rgba(0,229,160,0.18)',  particle: '#00e5a0', filter: 'glow-teal' },
+      mgmt:  { stroke: 'rgba(71,85,105,0.35)',  particle: null,      filter: null }
+    };
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ══════════════════════════════════════════
+       Path Calculation
+       ══════════════════════════════════════════ */
+    const diagram = document.getElementById('diagram');
+    const svg = document.getElementById('svg-connections');
+
+    function calcPath(fromId, toId, type) {
+      const fromEl = document.getElementById(fromId);
+      const toEl = document.getElementById(toId);
+      if (!fromEl || !toEl) return null;
+
+      const dRect = diagram.getBoundingClientRect();
+      const fRect = fromEl.getBoundingClientRect();
+      const tRect = toEl.getBoundingClientRect();
+
+      const ox = dRect.left;
+      const oy = dRect.top;
+
+      // Management: horizontal line (console → broker)
+      if (type === 'mgmt') {
+        const x1 = fRect.left - ox;
+        const y1 = fRect.top + fRect.height / 2 - oy;
+        const x2 = tRect.right - ox;
+        const y2 = tRect.top + tRect.height / 2 - oy;
+        return `M ${x1} ${y1} L ${x2} ${y2}`;
+      }
+
+      // Default: bottom-center → top-center with cubic bezier
+      const x1 = fRect.left + fRect.width / 2 - ox;
+      const y1 = fRect.bottom - oy;
+      const x2 = tRect.left + tRect.width / 2 - ox;
+      const y2 = tRect.top - oy;
+      const dy = Math.abs(y2 - y1);
+      const cp = Math.max(dy * 0.45, 30);
+      return `M ${x1} ${y1} C ${x1} ${y1 + cp}, ${x2} ${y2 - cp}, ${x2} ${y2}`;
+    }
+
+    /* ══════════════════════════════════════════
+       Draw Connections
+       ══════════════════════════════════════════ */
+    let pathIdCounter = 0;
+
+    function drawConnections() {
+      // Clear existing paths (keep <defs>)
+      const defs = svg.querySelector('defs');
+      svg.innerHTML = '';
+      svg.appendChild(defs);
+
+      // Set SVG size
+      const dRect = diagram.getBoundingClientRect();
+      svg.setAttribute('width', dRect.width);
+      svg.setAttribute('height', dRect.height);
+      svg.setAttribute('viewBox', `0 0 ${dRect.width} ${dRect.height}`);
+
+      pathIdCounter = 0;
+
+      CONNECTIONS.forEach(conn => {
+        const d = calcPath(conn.from, conn.to, conn.type);
+        if (!d) return;
+
+        const cfg = COLORS[conn.type];
+        const pid = `path-${pathIdCounter++}`;
+
+        // Draw path line
+        const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        pathEl.setAttribute('id', pid);
+        pathEl.setAttribute('d', d);
+        pathEl.setAttribute('fill', 'none');
+        pathEl.setAttribute('stroke', cfg.stroke);
+        pathEl.setAttribute('stroke-width', conn.type === 'mgmt' ? '1.5' : '2');
+
+        if (conn.type === 'mgmt') {
+          pathEl.setAttribute('stroke-dasharray', '6 4');
+        }
+
+        svg.appendChild(pathEl);
+
+        // Animated particles (skip for management and reduced-motion)
+        if (cfg.particle && !prefersReducedMotion) {
+          const particleCount = conn.type === 'cross' ? 4 : 3;
+          const stagger = conn.dur / particleCount;
+
+          for (let i = 0; i < particleCount; i++) {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('r', conn.type === 'cross' ? '3.5' : '2.8');
+            circle.setAttribute('fill', cfg.particle);
+            circle.setAttribute('filter', `url(#${cfg.filter})`);
+            circle.setAttribute('opacity', '0.9');
+
+            const anim = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
+            anim.setAttribute('dur', `${conn.dur}s`);
+            anim.setAttribute('begin', `${(i * stagger).toFixed(1)}s`);
+            anim.setAttribute('repeatCount', 'indefinite');
+
+            const mpath = document.createElementNS('http://www.w3.org/2000/svg', 'mpath');
+            mpath.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `#${pid}`);
+            mpath.setAttribute('href', `#${pid}`);
+
+            anim.appendChild(mpath);
+            circle.appendChild(anim);
+            svg.appendChild(circle);
+          }
+        }
+      });
+    }
+
+    /* ══════════════════════════════════════════
+       Tooltip Handling
+       ══════════════════════════════════════════ */
+    const tooltip = document.getElementById('tooltip');
+    const tipDot = document.getElementById('tip-dot');
+    const tipName = document.getElementById('tip-name');
+    const tipRows = document.getElementById('tip-rows');
+    const tipDesc = document.getElementById('tip-desc');
+
+    document.querySelectorAll('.comp[data-key]').forEach(el => {
+      el.addEventListener('mouseenter', (e) => {
+        const info = INFO[el.dataset.key];
+        if (!info) return;
+
+        tipDot.style.background = info.color;
+        tipName.textContent = info.name;
+
+        tipRows.innerHTML = info.fields.map(([label, value]) =>
+          `<div class="tip-row"><span class="tip-label">${label}</span><span class="tip-value">${value}</span></div>`
+        ).join('');
+
+        tipDesc.textContent = info.desc;
+        tooltip.classList.add('visible');
+        tooltip.setAttribute('aria-hidden', 'false');
+      });
+
+      el.addEventListener('mousemove', (e) => {
+        const pad = 16;
+        let x = e.clientX + pad;
+        let y = e.clientY + pad;
+        const tw = tooltip.offsetWidth;
+        const th = tooltip.offsetHeight;
+        if (x + tw > window.innerWidth - pad) x = e.clientX - tw - pad;
+        if (y + th > window.innerHeight - pad) y = e.clientY - th - pad;
+        tooltip.style.left = x + 'px';
+        tooltip.style.top = y + 'px';
+      });
+
+      el.addEventListener('mouseleave', () => {
+        tooltip.classList.remove('visible');
+        tooltip.setAttribute('aria-hidden', 'true');
+      });
+    });
+
+    /* ══════════════════════════════════════════
+       Init & Resize
+       ══════════════════════════════════════════ */
+    let resizeTimer;
+    function init() {
+      drawConnections();
+    }
+
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(drawConnections, 150);
+    });
+
+    // Wait for fonts + layout to settle
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => requestAnimationFrame(init));
+    } else {
+      window.addEventListener('load', init);
+    }
+  </script>
+</body>
+</html>
