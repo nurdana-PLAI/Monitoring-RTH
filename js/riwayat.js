@@ -56,18 +56,41 @@ function initSidebar() {
 // ===================================
 async function loadRiwayatData() {
   try {
-    const response = await fetch("data/riwayat.csv");
-    const csvText = await response.text();
-    riwayatData = parseCSV(csvText);
+    console.log("Loading history...");
+
+    const baseUrl = "http://172.16.10.146:1880/api/history";
+
+    const [tempRes, humRes, soilRes, pmRes] = await Promise.all([
+      fetch(`${baseUrl}?sensor=temperature`),
+      fetch(`${baseUrl}?sensor=humidity`),
+      fetch(`${baseUrl}?sensor=soil_humidity`),
+      fetch(`${baseUrl}?sensor=pm25`),
+    ]);
+
+    const temperature = await tempRes.json();
+    const humidity = await humRes.json();
+    const soil = await soilRes.json();
+    const pm25 = await pmRes.json();
+
+    console.log("Temperature", temperature);
+    console.log("Humidity", humidity);
+    console.log("Soil", soil);
+    console.log("PM25", pm25);
+
+    riwayatData = mergeSensorData(temperature, humidity, soil, pm25);
+
     filteredData = [...riwayatData];
+
+    console.log("Merged", riwayatData);
 
     updateHistoricalChart(filteredData);
     updateStatistics(filteredData);
     renderTable();
 
     showLoading(false);
-  } catch (error) {
-    console.error("Error loading data:", error);
+  } catch (err) {
+    console.error(err);
+
     riwayatData = generateDummyRiwayat();
     filteredData = [...riwayatData];
 
@@ -77,6 +100,31 @@ async function loadRiwayatData() {
 
     showLoading(false);
   }
+}
+
+function mergeSensorData(temp, hum, soil, pm) {
+  const result = [];
+
+  const length = Math.min(temp.length, hum.length, soil.length, pm.length);
+
+  for (let i = 0; i < length; i++) {
+    result.push({
+      tanggal: temp[i].timestamp,
+
+      suhu: temp[i].value,
+
+      rh: hum[i].value,
+
+      soil: soil[i].value,
+
+      pm25: pm[i].value,
+
+      // sementara dummy
+      skor: 80,
+    });
+  }
+
+  return result;
 }
 
 function parseCSV(csvText) {
@@ -231,9 +279,13 @@ function updateHistoricalChart(data) {
   historicalChart.update("active");
 }
 
-function formatDate(dateStr) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
+function formatDate(timestamp) {
+  const d = new Date(timestamp);
+
+  return d.toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 // ===================================
@@ -284,30 +336,27 @@ function renderTable() {
       (row) => `
         <tr>
             <td>${formatFullDate(row.tanggal)}</td>
-            <td>${row.suhu} °C</td>
-            <td>${row.rh} %</td>
-            <td>${row.soil} %</td>
-            <td>${row.pm25} µg/m³</td>
+            <td>${row.suhu.toFixed(2)} °C</td>
+            <td>${row.rh.toFixed(2)} %</td>
+            <td>${row.soil.toFixed(2)} %</td>
+            <td>${row.pm25.toFixed(2)} µg/m³</td>
             <td>
                 <span class="skor-badge ${getSkorClass(row.skor)}">${
-        row.skor
-      }</span>
+                  row.skor
+                }</span>
             </td>
         </tr>
-    `
+    `,
     )
     .join("");
 
   updatePagination();
 }
 
-function formatFullDate(dateStr) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("id-ID", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+function formatFullDate(timestamp) {
+  const d = new Date(timestamp);
+
+  return d.toLocaleString("id-ID");
 }
 
 function getSkorClass(skore) {
@@ -323,9 +372,8 @@ function updatePagination() {
   const start = (currentPage - 1) * rowsPerPage + 1;
   const end = Math.min(currentPage * rowsPerPage, total);
 
-  document.getElementById(
-    "paginationInfo"
-  ).textContent = `Menampilkan ${start}-${end} dari ${total} data`;
+  document.getElementById("paginationInfo").textContent =
+    `Menampilkan ${start}-${end} dari ${total} data`;
   document.getElementById("pageIndicator").textContent = `Hal ${currentPage}`;
 
   document.getElementById("btnPrev").disabled = currentPage === 1;
@@ -367,7 +415,7 @@ function initEventListeners() {
           (row) =>
             row.tanggal.includes(query) ||
             row.suhu.includes(query) ||
-            row.rh.includes(query)
+            row.rh.includes(query),
         );
       } else {
         filteredData = [...riwayatData];
