@@ -111,20 +111,61 @@ function updateDateTime() {
 // ===================================
 async function loadRealtimeData() {
   try {
-    const response = await fetch("data/realtime.csv");
-    const csvText = await response.text();
-    realtimeData = parseCSV(csvText);
+    console.clear();
+    console.log("====================================");
+    console.log("Mengambil data dari API...");
+    console.log("====================================");
 
-    if (realtimeData.length > 0) {
-      updateDashboard(realtimeData);
-    }
+    // Mapping nama chart -> sensor di API
+    const sensorMap = {
+      suhu: "temperature",
+      rh: "humidity",
+      soil: "soil_humidity",
+      pm25: "pm25",
+    };
+
+    const sensor = sensorMap[currentChartData];
+
+    // Ambil latest dan history bersamaan
+    const [latestResponse, historyResponse] = await Promise.all([
+      fetch("http://172.16.10.146:1880/api/latest"),
+      fetch(`http://172.16.10.146:1880/api/history?sensor=${sensor}`),
+    ]);
+
+    const latest = await latestResponse.json();
+    const history = await historyResponse.json();
+
+    console.log("=== Latest ===");
+    console.table(latest);
+
+    console.log("=== History ===");
+    console.table(history);
+
+    // Data history untuk chart
+    realtimeData = history.map((item) => ({
+      timestamp: item.timestamp,
+      suhu: sensor === "temperature" ? item.value : latest.temperature,
+      rh: sensor === "humidity" ? item.value : latest.humidity,
+      soil: sensor === "soil_humidity" ? item.value : latest.soil_humidity,
+      pm25: sensor === "pm25" ? item.value : latest.pm25,
+
+      skor: 80,
+      kategori: "Baik",
+    }));
+
+    console.log("=== Data Dashboard ===");
+    console.table(realtimeData);
+
+    updateDashboard(realtimeData);
 
     showLoading(false);
   } catch (error) {
-    console.error("Error loading data:", error);
-    // Use dummy data if CSV fails
+    console.error("Gagal mengambil data API");
+    console.error(error);
+
     realtimeData = generateDummyData();
     updateDashboard(realtimeData);
+
     showLoading(false);
   }
 }
@@ -546,7 +587,7 @@ function updateRecommendations(data) {
                 <p>${rec.desc}</p>
             </div>
         </div>
-    `
+    `,
     )
     .join("");
 }
@@ -563,7 +604,16 @@ function initEventListeners() {
       this.classList.add("active");
       currentChartData = this.dataset.chart;
       if (realtimeData.length > 0) {
-        updateChart(realtimeData);
+        tab.addEventListener("click", async function () {
+          chartTabs.forEach((t) => t.classList.remove("active"));
+          this.classList.add("active");
+
+          currentChartData = this.dataset.chart;
+
+          console.log("Ganti chart :", currentChartData);
+
+          await loadRealtimeData();
+        });
       }
     });
   });
