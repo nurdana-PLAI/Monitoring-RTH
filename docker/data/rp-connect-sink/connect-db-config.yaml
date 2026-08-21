@@ -26,6 +26,8 @@ pipeline:
     - bloblang: |
         let ts_val = this.ts
         let loc_val = this.loc_id
+        let fuzzy_val = this.fuzzy.ikl | 0.0
+        let fuzzy_label = this.fuzzy.label | "Unknown" 
         
         root = this.readings.map_each(r -> {
           "timestamp": $ts_val,
@@ -33,21 +35,25 @@ pipeline:
           "sensor_id": r.sensor_id,
           "sensor_type": r.type,
           "unit": r.unit,
-          "value": r.val
+          "value": r.val,
+          "ikl" : $fuzzy_val,
+          "ikl_label" : $fuzzy_label
         })
     # 3. Split the array into individual messages
     - unarchive:
         format: json_array
     # 4. Generate InfluxDB Line Protocol (ILP) for QuestDB
-    # We append the timestamp as a string to avoid %d formatting issues
     - bloblang: |
-        root = "sensor_readings,loc_id=%s,sensor_id=%s,sensor_type=%s,unit=%s value=%f ".format(
-          this.loc_id.string() | "unknown", 
-          this.sensor_id.string() | "unknown", 
-          this.sensor_type.string() | "unknown", 
-          this.unit.string() | "unknown", 
-          this.value.float64() | 0.0
-        ) + (this.timestamp.int64() | 0).string()
+        root = "sensor_readings,loc_id=%s,sensor_id=%s,sensor_type=%s,unit=%s ikl_label=\"%s\",value=%f,ikl=%f %s".format(
+          this.loc_id.string() | "unknown",
+          this.sensor_id.string() | "unknown",
+          this.sensor_type.string() | "unknown",
+          this.unit.string() | "unknown",
+          this.ikl_label.string() | "unknown",
+          this.value.float64() | 0.0,
+          this.ikl.float64() | 0.0,
+          (this.timestamp.int64() | 0).string()
+        )
 
 output:
   broker:

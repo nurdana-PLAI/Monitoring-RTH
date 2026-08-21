@@ -29,9 +29,9 @@
                                 "config",
                                 "context"
                             ],
-                            "height": 302,
+                            "height": 304,
                             "hidden": false,
-                            "active": "info"
+                            "active": "help"
                         },
                         "bottom": {
                             "tabs": [
@@ -47,7 +47,7 @@
                             "tabs": [
                                 "explorer"
                             ],
-                            "height": 302,
+                            "height": 304,
                             "hidden": false,
                             "active": "explorer"
                         },

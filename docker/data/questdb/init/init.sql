@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS sensor_readings (
   sensor_id SYMBOL,
   sensor_type SYMBOL,
   unit SYMBOL,
-  value DOUBLE
+  value DOUBLE,
+  ikl DOUBLE,
+  ikl_label SYMBOL
 ) timestamp(timestamp) PARTITION BY DAY WAL;
 
 CREATE TABLE IF NOT EXISTS predictions (

@@ -1,0 +1,100 @@
+[System]
+Name='SPK_RTH'
+Type='mamdani'
+Version=2.0
+NumInputs=4
+NumOutputs=1
+NumRules=43
+AndMethod='min'
+OrMethod='max'
+ImpMethod='min'
+AggMethod='max'
+DefuzzMethod='centroid'
+
+[Input1]
+Name='SuhuUdara'
+Range=[15 45]
+NumMFs=3
+MF1='Dingin':'trapmf',[15 15 20 26]
+MF2='Nyaman':'trapmf',[20 22 30 33]
+MF3='Panas':'trapmf',[29 35 45 45]
+
+[Input2]
+Name='KelUdara'
+Range=[0 100]
+NumMFs=3
+MF1='Rendah':'trapmf',[0 0 30 50]
+MF2='Sedang':'trimf',[40 60 80]
+MF3='Tinggi':'trapmf',[70 85 100 100]
+
+[Input3]
+Name='KelTanah'
+Range=[0 100]
+NumMFs=3
+MF1='Kering':'trapmf',[0 0 20 35]
+MF2='Lembab':'trimf',[25 50 70]
+MF3='Basah':'trapmf',[60 80 100 100]
+
+[Input4]
+Name='PM25'
+Range=[0 150]
+NumMFs=4
+MF1='Baik':'trapmf',[0 0 15.5 25]
+MF2='Sedang':'trimf',[15.5 35 55.4]
+MF3='TidakSehat':'trimf',[45 90 130]
+MF4='Berbahaya':'trapmf',[110 135 150 150]
+
+[Output1]
+Name='IKL'
+Range=[0 100]
+NumMFs=5
+MF1='Buruk':'trapmf',[0 0 20 35]
+MF2='KurangBaik':'trimf',[25 40 55]
+MF3='Cukup':'trimf',[45 60 75]
+MF4='Baik':'trimf',[65 80 90]
+MF5='SangatBaik':'trapmf',[82 92 100 100]
+
+[Rules]
+2 2 2 1, 5 (1) : 1
+2 3 2 1, 5 (1) : 1
+2 2 3 1, 4 (1) : 1
+2 3 3 1, 4 (1) : 1
+2 1 2 1, 3 (1) : 1
+2 2 1 1, 3 (1) : 1
+2 1 1 1, 3 (1) : 1
+3 2 2 1, 4 (1) : 1
+3 3 2 1, 4 (1) : 1
+3 1 2 1, 3 (1) : 1
+3 2 1 1, 3 (1) : 1
+3 1 1 1, 2 (1) : 1
+1 2 2 1, 4 (1) : 1
+1 3 2 1, 4 (1) : 1
+1 3 3 1, 3 (1) : 1
+1 1 1 1, 3 (1) : 1
+1 2 1 1, 3 (1) : 1
+2 2 2 2, 4 (1) : 1
+2 3 2 2, 4 (1) : 1
+2 2 3 2, 3 (1) : 1
+2 1 2 2, 3 (1) : 1
+2 2 1 2, 3 (1) : 1
+2 1 1 2, 2 (1) : 1
+3 2 2 2, 3 (1) : 1
+3 3 2 2, 3 (1) : 1
+3 1 2 2, 2 (1) : 1
+3 2 1 2, 2 (1) : 1
+3 1 1 2, 2 (1) : 1
+1 2 2 2, 3 (1) : 1
+1 1 1 2, 2 (1) : 1
+1 3 3 2, 3 (1) : 1
+2 2 2 3, 2 (1) : 1
+2 3 2 3, 3 (1) : 1
+2 1 2 3, 2 (1) : 1
+2 2 1 3, 2 (1) : 1
+2 1 1 3, 1 (1) : 1
+3 2 2 3, 2 (1) : 1
+3 1 2 3, 1 (1) : 1
+3 1 1 3, 1 (1) : 1
+3 2 1 3, 1 (1) : 1
+1 2 2 3, 2 (1) : 1
+1 1 1 3, 2 (1) : 1
+0 0 0 4, 1 (1) : 1

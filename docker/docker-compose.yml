@@ -247,7 +247,31 @@ services:
     networks:
       ugi-net:
         ipv4_address: 172.16.0.190
-
+  
+  app:
+    image: python:3.12-slim
+    container_name: python_local_app
+    depends_on:
+      - nanomq
+    volumes:
+      # Mounts your current local folder to /app inside the container
+      - ./data/python_fuzzy:/app
+    working_dir: /app
+    environment:
+      # Prevents Python from buffering stdout, ensuring logs appear instantly
+      - PYTHONUNBUFFERED=1
+      - MQTT_HOST=nanomq
+      - MQTT_PORT=1883
+      - MQTT_INPUT_TOPIC=smartenv/data
+      - MQTT_OUTPUT_TOPIC=smartenv/data/fuzzy
+      - MQTT_QOS=0
+      - LOG_LEVEL=INFO
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt && python main.py"
+    networks: 
+      ugi-net:
+        ipv4_address: 172.16.0.200
+    
 networks:
   ugi-net:
     ipam:

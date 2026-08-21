@@ -128,8 +128,8 @@ async function loadRealtimeData() {
 
     // Ambil latest dan history bersamaan
     const [latestResponse, historyResponse] = await Promise.all([
-      fetch("http://172.16.10.146:1880/api/latest"),
-      fetch(`http://172.16.10.146:1880/api/history?sensor=${sensor}`),
+      fetch("http://localhost:1880/api/latest"),
+      fetch(`http://localhost:1880/api/history?sensor=${sensor}`),
     ]);
 
     const latest = await latestResponse.json();
@@ -148,9 +148,8 @@ async function loadRealtimeData() {
       rh: sensor === "humidity" ? item.value : latest.humidity,
       soil: sensor === "soil_humidity" ? item.value : latest.soil_humidity,
       pm25: sensor === "pm25" ? item.value : latest.pm25,
-
-      skor: 80,
-      kategori: "Baik",
+      skor: latest.ikl,
+      kategori: latest.ikl_label,
     }));
 
     console.log("=== Data Dashboard ===");
@@ -301,7 +300,8 @@ function updateStatus(data) {
   }
 
   // Update details
-  updateValue("valKategori", kategori);
+  const valKategori = document.getElementById("valKategori");
+  if (valKategori) valKategori.textContent = kategori;
   const valSkor = document.getElementById("valSkor");
   if (valSkor) valSkor.textContent = skor + "/100";
 }
