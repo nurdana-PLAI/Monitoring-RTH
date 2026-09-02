@@ -7,7 +7,7 @@ input:
     urls: 
       - "tcp://nanomq:1883"
     topics: 
-      - "smartenv/#"
+      - "smartenv/data/fuzzy"
     client_id: "rp-connect-bridge"
 
 output:

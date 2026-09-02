@@ -58,8 +58,9 @@ async function loadRiwayatData() {
   try {
     console.log("Loading history...");
 
-    const baseUrl = "http://localhost:1880/api/history";
-
+    //const baseUrl = "http://localhost:1880/api/history";
+    const baseUrl = `${window.location.protocol}//${window.location.host}:1880/api/history`;
+	  
     const [tempRes, humRes, soilRes, pmRes] = await Promise.all([
       fetch(`${baseUrl}?sensor=temperature`),
       fetch(`${baseUrl}?sensor=humidity`),

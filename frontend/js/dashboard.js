@@ -128,8 +128,10 @@ async function loadRealtimeData() {
 
     // Ambil latest dan history bersamaan
     const [latestResponse, historyResponse] = await Promise.all([
-      fetch("http://localhost:1880/api/latest"),
-      fetch(`http://localhost:1880/api/history?sensor=${sensor}`),
+      // fetch("http://localhost:1880/api/latest"),
+      // fetch(`http://localhost:1880/api/history?sensor=${sensor}`),
+      fetch(`${window.location.protocol}//${window.location.host}:1880/api/latest`),
+      fetch(`${window.location.protocol}//${window.location.host}:1880/api/history?sensor=${sensor}`),
     ]);
 
     const latest = await latestResponse.json();
