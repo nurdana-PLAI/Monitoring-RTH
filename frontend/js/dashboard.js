@@ -13,8 +13,8 @@ let realtimeData = [];
 
 // Node IoT Locations
 const iotNodes = [
-  { id: 1, name: "Node 1", lat: -6.9147, lng: 107.6098, status: "active" },
-  { id: 2, name: "Node 2", lat: -6.9175, lng: 107.6132, status: "active" },
+  { id: 1, name: "Node 1", lat: -7.787022, lng: 110.387976, status: "active" },
+  { id: 2, name: "Node 2", lat: -7.787021, lng: 110.388181, status: "active" },
 ];
 
 // Chart Colors
@@ -110,13 +110,11 @@ function updateDateTime() {
 // DATA LOADING
 // ===================================
 async function loadRealtimeData() {
-  try {
-    console.clear();
-    console.log("====================================");
-    console.log("Mengambil data dari API...");
-    console.log("====================================");
+  console.log("====================================");
+  console.log("Mengambil data dashboard...");
+  console.log("====================================");
 
-    // Mapping nama chart -> sensor di API
+  try {
     const sensorMap = {
       suhu: "temperature",
       rh: "humidity",
@@ -126,48 +124,164 @@ async function loadRealtimeData() {
 
     const sensor = sensorMap[currentChartData];
 
-    // Ambil latest dan history bersamaan
+    console.log("Sensor yang dipilih:", sensor);
+
     const [latestResponse, historyResponse] = await Promise.all([
-      // fetch("http://localhost:1880/api/latest"),
-      // fetch(`http://localhost:1880/api/history?sensor=${sensor}`),
-      fetch(`${window.location.protocol}//${window.location.host}:1880/api/latest`),
-      fetch(`${window.location.protocol}//${window.location.host}:1880/api/history?sensor=${sensor}`),
+      fetch("http://192.168.88.99:1880/api/latest", {
+        cache: "no-store",
+      }),
+
+      fetch(`http://192.168.88.99:1880/api/history?sensor=${sensor}`, {
+        cache: "no-store",
+      }),
     ]);
+
+    console.log("Latest status:", latestResponse.status);
+    console.log("History status:", historyResponse.status);
 
     const latest = await latestResponse.json();
     const history = await historyResponse.json();
 
-    console.log("=== Latest ===");
-    console.table(latest);
+    console.log("LATEST:");
+    console.log(latest);
 
-    console.log("=== History ===");
+    console.log("HISTORY:");
     console.table(history);
 
-    // Data history untuk chart
+    if (!latest) {
+      throw new Error("Latest kosong");
+    }
+
+    if (!Array.isArray(history)) {
+      throw new Error("History bukan array");
+    }
+
+    // Simpan latest secara terpisah
+    latestSensorData = latest;
+
+    // History hanya untuk grafik
     realtimeData = history.map((item) => ({
       timestamp: item.timestamp,
-      suhu: sensor === "temperature" ? item.value : latest.temperature,
-      rh: sensor === "humidity" ? item.value : latest.humidity,
-      soil: sensor === "soil_humidity" ? item.value : latest.soil_humidity,
-      pm25: sensor === "pm25" ? item.value : latest.pm25,
-      skor: latest.ikl,
-      kategori: latest.ikl_label,
+      value: Number(item.value),
     }));
 
-    console.log("=== Data Dashboard ===");
+    console.log("REALTIME DATA:");
     console.table(realtimeData);
 
-    updateDashboard(realtimeData);
+    // Update dashboard
+    updateDashboard();
 
     showLoading(false);
   } catch (error) {
-    console.error("Gagal mengambil data API");
-    console.error(error);
+    console.error("ERROR DASHBOARD:", error);
 
-    realtimeData = generateDummyData();
-    updateDashboard(realtimeData);
+    realtimeData = [];
+    latestSensorData = null;
 
+    showEmptyDashboard();
     showLoading(false);
+  }
+}
+
+function showEmptyDashboard() {
+  // ================================
+  // NILAI SENSOR
+  // ================================
+  const sensorElements = [
+    "valSuhu",
+    "valRh",
+    "valSoil",
+    "valPm25",
+    "valKategori",
+    "valSkor",
+    "circleValSuhu",
+    "circleValRh",
+    "circleValSoil",
+    "circleValPm25",
+  ];
+
+  sensorElements.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = "-";
+    }
+  });
+
+  // ================================
+  // STATUS BADGE
+  // ================================
+  const statusBadge = document.getElementById("statusBadge");
+
+  if (statusBadge) {
+    statusBadge.className = "status-badge";
+
+    const badgeText = statusBadge.querySelector(".badge-text");
+
+    if (badgeText) {
+      badgeText.textContent = "-";
+    }
+  }
+
+  // ================================
+  // GAUGE
+  // ================================
+  const gaugeFill = document.getElementById("gaugeFill");
+  const gaugeValue = document.getElementById("gaugeValue");
+
+  if (gaugeFill) {
+    gaugeFill.style.strokeDasharray = "0, 251";
+  }
+
+  if (gaugeValue) {
+    gaugeValue.textContent = "-";
+  }
+
+  // ================================
+  // QUALITY CIRCLES
+  // ================================
+  const circles = ["circleSuhu", "circleRh", "circleSoil", "circlePm25"];
+
+  circles.forEach((id) => {
+    const circle = document.getElementById(id);
+
+    if (circle) {
+      circle.setAttribute("stroke-dasharray", "0, 100");
+    }
+  });
+
+  // ================================
+  // CHART
+  // ================================
+  if (monitoringChart) {
+    monitoringChart.data.labels = [];
+    monitoringChart.data.datasets[0].data = [];
+
+    monitoringChart.update();
+  }
+
+  // ================================
+  // RECOMMENDATION
+  // ================================
+  const recommendationGrid = document.getElementById("recommendationGrid");
+
+  if (recommendationGrid) {
+    recommendationGrid.innerHTML = `
+      <div class="recommendation-card">
+        <div class="rec-content">
+          <h4>Data Tidak Tersedia</h4>
+          <p>Data monitoring belum dapat diambil dari server.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  // ================================
+  // LAST UPDATE
+  // ================================
+  const lastUpdate = document.getElementById("lastUpdate");
+
+  if (lastUpdate) {
+    lastUpdate.textContent = "Terakhir diperbarui: -";
   }
 }
 
@@ -188,58 +302,50 @@ function parseCSV(csvText) {
   return data;
 }
 
-function generateDummyData() {
-  const data = [];
-  const now = new Date();
-
-  for (let i = 23; i >= 0; i--) {
-    const time = new Date(now - i * 60 * 60 * 1000);
-    data.push({
-      timestamp: time.toISOString().slice(0, 16).replace("T", " "),
-      suhu: (26 + Math.random() * 6).toFixed(1),
-      rh: (65 + Math.random() * 20).toFixed(0),
-      soil: (55 + Math.random() * 15).toFixed(0),
-      pm25: (12 + Math.random() * 15).toFixed(0),
-      skor: (70 + Math.random() * 20).toFixed(0),
-      kategori: ["Baik", "Sedang", "Baik"][Math.floor(Math.random() * 3)],
-    });
-  }
-
-  return data;
-}
-
 // ===================================
 // UPDATE DASHBOARD
 // ===================================
-function updateDashboard(data) {
-  if (data.length === 0) return;
+function updateDashboard() {
+  if (!latestSensorData) return;
 
-  const latest = data[data.length - 1];
+  const latest = {
+    timestamp: latestSensorData.timestamp,
+    suhu: Number(latestSensorData.temperature),
+    rh: Number(latestSensorData.humidity),
+    soil: Number(latestSensorData.soil_humidity),
+    pm25: Number(latestSensorData.pm25),
+    skor: Number(latestSensorData.ikl),
+    kategori: latestSensorData.ikl_label,
+  };
 
-  // Update indicator cards
+  console.log("DATA UNTUK KARTU:");
+  console.log(latest);
+
+  // Kartu sensor
   updateValue("valSuhu", latest.suhu);
   updateValue("valRh", latest.rh);
   updateValue("valSoil", latest.soil);
   updateValue("valPm25", latest.pm25);
 
-  // Update status
+  // IKL
   updateStatus(latest);
 
-  // Update charts
-  updateChart(data);
+  // Grafik history
+  updateChart(realtimeData);
 
-  // Update quality circles
+  // Lingkaran
   updateQualityCircles(latest);
 
-  // Update recommendations
+  // Rekomendasi
   updateRecommendations(latest);
 
-  // Update last update time
+  // Waktu update
   const lastUpdate = document.getElementById("lastUpdate");
+
   if (lastUpdate) {
-    lastUpdate.textContent = `Terakhir diperbarui: ${
-      latest.timestamp || "Baru saja"
-    }`;
+    const date = new Date(latest.timestamp);
+
+    lastUpdate.textContent = `Terakhir diperbarui: ${date.toLocaleString("id-ID")}`;
   }
 }
 
@@ -276,17 +382,51 @@ function animateValue(element, start, end) {
 // STATUS UPDATE
 // ===================================
 function updateStatus(data) {
-  const skor = parseFloat(data.skor) || 78;
-  const kategori = data.kategori || "Baik";
+  const skor = parseFloat(data.skor);
+  const kategori = data.kategori;
 
-  // Update gauge
   const gaugeFill = document.getElementById("gaugeFill");
   const gaugeValue = document.getElementById("gaugeValue");
 
+  // Jika skor tidak tersedia
+  if (isNaN(skor)) {
+    if (gaugeFill) {
+      gaugeFill.style.strokeDasharray = "0, 251";
+    }
+
+    if (gaugeValue) {
+      gaugeValue.textContent = "-";
+    }
+
+    const statusBadge = document.getElementById("statusBadge");
+
+    if (statusBadge) {
+      statusBadge.className = "status-badge";
+
+      const badgeText = statusBadge.querySelector(".badge-text");
+
+      if (badgeText) {
+        badgeText.textContent = "-";
+      }
+    }
+
+    const valKategori = document.getElementById("valKategori");
+    if (valKategori) {
+      valKategori.textContent = "-";
+    }
+
+    const valSkor = document.getElementById("valSkor");
+    if (valSkor) {
+      valSkor.textContent = "-";
+    }
+
+    return;
+  }
+
+  // Update gauge
   if (gaugeFill && gaugeValue) {
-    // Calculate arc length
-    const maxArc = 251; // Approximate arc length
-    const percentage = skor / 100;
+    const maxArc = 251;
+    const percentage = Math.max(0, Math.min(skor, 100)) / 100;
     const arcLength = maxArc * percentage;
 
     gaugeFill.style.strokeDasharray = `${arcLength}, 251`;
@@ -295,17 +435,33 @@ function updateStatus(data) {
 
   // Update status badge
   const statusBadge = document.getElementById("statusBadge");
+
   if (statusBadge) {
     statusBadge.className = "status-badge";
-    statusBadge.classList.add(kategori.toLowerCase());
-    statusBadge.querySelector(".badge-text").textContent = kategori;
+
+    if (kategori) {
+      statusBadge.classList.add(kategori.toLowerCase());
+    }
+
+    const badgeText = statusBadge.querySelector(".badge-text");
+
+    if (badgeText) {
+      badgeText.textContent = kategori || "-";
+    }
   }
 
   // Update details
   const valKategori = document.getElementById("valKategori");
-  if (valKategori) valKategori.textContent = kategori;
+
+  if (valKategori) {
+    valKategori.textContent = kategori || "-";
+  }
+
   const valSkor = document.getElementById("valSkor");
-  if (valSkor) valSkor.textContent = skor + "/100";
+
+  if (valSkor) {
+    valSkor.textContent = skor + "/100";
+  }
 }
 
 // ===================================
@@ -399,30 +555,40 @@ function updateChart(data) {
   if (!monitoringChart) return;
 
   const labels = data.map((d) => {
-    const time = d.timestamp ? d.timestamp.split(" ")[1] : "";
-    return time || "";
+    if (!d.timestamp) return "";
+
+    const date = new Date(d.timestamp);
+
+    if (isNaN(date.getTime())) return "";
+
+    return date.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   });
 
-  let values, label, color;
+  const values = data.map((d) => Number(d.value));
+
+  let label;
+  let color;
 
   switch (currentChartData) {
     case "rh":
-      values = data.map((d) => parseFloat(d.rh));
-      label = "Kelembaban Udara (%)";
+      label = "Kelembapan Udara (%)";
       color = chartColors.rh;
       break;
+
     case "soil":
-      values = data.map((d) => parseFloat(d.soil));
-      label = "Kelembaban Tanah (%)";
+      label = "Kelembapan Tanah (%)";
       color = chartColors.soil;
       break;
+
     case "pm25":
-      values = data.map((d) => parseFloat(d.pm25));
       label = "PM2.5 (µg/m³)";
       color = chartColors.pm25;
       break;
+
     default:
-      values = data.map((d) => parseFloat(d.suhu));
       label = "Suhu (°C)";
       color = chartColors.suhu;
   }
@@ -434,7 +600,7 @@ function updateChart(data) {
   monitoringChart.data.datasets[0].backgroundColor = color.light;
   monitoringChart.data.datasets[0].pointHoverBackgroundColor = color.main;
 
-  monitoringChart.update("active");
+  monitoringChart.update();
 }
 
 // ===================================
@@ -446,8 +612,8 @@ function initMap() {
 
   // Initialize map
   map = L.map("map", {
-    center: [-6.9147, 107.6098],
-    zoom: 14,
+    center: [-7.7870215, 110.3880785],
+    zoom: 17,
     zoomControl: true,
   });
 
@@ -600,31 +766,30 @@ function updateRecommendations(data) {
 function initEventListeners() {
   // Chart tabs
   const chartTabs = document.querySelectorAll(".chart-tab");
+
   chartTabs.forEach((tab) => {
-    tab.addEventListener("click", function () {
+    tab.addEventListener("click", async function () {
+      // Update active tab
       chartTabs.forEach((t) => t.classList.remove("active"));
       this.classList.add("active");
+
+      // Update chart type
       currentChartData = this.dataset.chart;
-      if (realtimeData.length > 0) {
-        tab.addEventListener("click", async function () {
-          chartTabs.forEach((t) => t.classList.remove("active"));
-          this.classList.add("active");
 
-          currentChartData = this.dataset.chart;
+      console.log("Ganti chart:", currentChartData);
 
-          console.log("Ganti chart :", currentChartData);
-
-          await loadRealtimeData();
-        });
-      }
+      // Ambil data history sesuai sensor yang dipilih
+      await loadRealtimeData();
     });
   });
 
   // Refresh button
   const btnRefresh = document.getElementById("btnRefresh");
+
   if (btnRefresh) {
     btnRefresh.addEventListener("click", function () {
       this.classList.add("loading");
+
       loadRealtimeData().finally(() => {
         setTimeout(() => {
           this.classList.remove("loading");
