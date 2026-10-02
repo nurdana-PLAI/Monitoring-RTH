@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
@@ -101,31 +101,37 @@
         </div>
       </header>
 
+      ```html
       <!-- Riwayat Content -->
       <div class="dashboard-content">
         <!-- Filter Section -->
         <section class="section-filter">
           <div class="filter-panel">
             <div class="filter-row">
+              <!-- Periode -->
               <div class="filter-group">
                 <label class="filter-label">Periode</label>
                 <select class="filter-select" id="filterPeriode">
-                  <option value="mingguan">Mingguan</option>
-                  <option value="bulanan" selected>Bulanan</option>
-                  <option value="tahunan">Tahunan</option>
+                  <option value="24h">24 Jam</option>
+                  <option value="weekly">Mingguan</option>
+                  <option value="monthly" selected>Bulanan</option>
+                  <option value="yearly">Tahunan</option>
                 </select>
               </div>
+
+              <!-- Parameter -->
               <div class="filter-group">
                 <label class="filter-label">Parameter</label>
                 <select class="filter-select" id="filterParameter">
-                  <option value="semua">Semua Sensor</option>
+                  <option value="semua" selected>Semua Sensor</option>
                   <option value="suhu">Suhu Udara</option>
-                  <option value="rh">Kelembaban Udara</option>
-                  <option value="soil">Kelembaban Tanah</option>
+                  <option value="rh">Kelembapan Udara</option>
+                  <option value="soil">Kelembapan Tanah</option>
                   <option value="pm25">PM2.5</option>
-                  <option value="skor">Skor Lingkungan</option>
                 </select>
               </div>
+
+              <!-- Tombol Filter -->
               <button class="btn-filter" id="btnTerapkan">
                 <svg
                   viewBox="0 0 24 24"
@@ -148,25 +154,30 @@
           <div class="panel">
             <div class="panel-header">
               <h3>Grafik Historis</h3>
+
               <div class="chart-legend" id="chartLegend">
-                <span class="legend-item" data-dataset="suhu"
-                  ><span class="legend-color" style="background: #0891b2"></span
-                  >Suhu</span
-                >
-                <span class="legend-item" data-dataset="rh"
-                  ><span class="legend-color" style="background: #10b981"></span
-                  >RH</span
-                >
-                <span class="legend-item" data-dataset="soil"
-                  ><span class="legend-color" style="background: #8b5cf6"></span
-                  >Tanah</span
-                >
-                <span class="legend-item" data-dataset="pm25"
-                  ><span class="legend-color" style="background: #f59e0b"></span
-                  >PM2.5</span
-                >
+                <span class="legend-item" data-dataset="suhu">
+                  <span class="legend-color" style="background: #0891b2"></span>
+                  Suhu
+                </span>
+
+                <span class="legend-item" data-dataset="rh">
+                  <span class="legend-color" style="background: #10b981"></span>
+                  RH
+                </span>
+
+                <span class="legend-item" data-dataset="soil">
+                  <span class="legend-color" style="background: #8b5cf6"></span>
+                  Tanah
+                </span>
+
+                <span class="legend-item" data-dataset="pm25">
+                  <span class="legend-color" style="background: #f59e0b"></span>
+                  PM2.5
+                </span>
               </div>
             </div>
+
             <div class="panel-body">
               <div class="chart-container chart-large">
                 <canvas id="historicalChart"></canvas>
@@ -178,6 +189,7 @@
         <!-- Statistik Ringkas -->
         <section class="section-stats mt-4">
           <div class="row g-4">
+            <!-- Suhu -->
             <div class="col-6 col-lg-2-4">
               <div class="stat-card">
                 <div class="stat-icon suhu">
@@ -192,12 +204,15 @@
                     />
                   </svg>
                 </div>
+
                 <div class="stat-content">
                   <span class="stat-label">Rata-rata Suhu</span>
                   <span class="stat-value" id="statSuhu">--</span>
                 </div>
               </div>
             </div>
+
+            <!-- RH -->
             <div class="col-6 col-lg-2-4">
               <div class="stat-card">
                 <div class="stat-icon rh">
@@ -210,12 +225,15 @@
                     <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
                   </svg>
                 </div>
+
                 <div class="stat-content">
                   <span class="stat-label">Rata-rata RH</span>
                   <span class="stat-value" id="statRh">--</span>
                 </div>
               </div>
             </div>
+
+            <!-- Soil -->
             <div class="col-6 col-lg-2-4">
               <div class="stat-card">
                 <div class="stat-icon soil">
@@ -228,12 +246,15 @@
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   </svg>
                 </div>
+
                 <div class="stat-content">
                   <span class="stat-label">Rata-rata Soil</span>
                   <span class="stat-value" id="statSoil">--</span>
                 </div>
               </div>
             </div>
+
+            <!-- PM2.5 -->
             <div class="col-6 col-lg-2-4">
               <div class="stat-card">
                 <div class="stat-icon pm25">
@@ -248,12 +269,15 @@
                     <path d="M12 8v8" />
                   </svg>
                 </div>
+
                 <div class="stat-content">
                   <span class="stat-label">Rata-rata PM2.5</span>
                   <span class="stat-value" id="statPm25">--</span>
                 </div>
               </div>
             </div>
+
+            <!-- Kategori -->
             <div class="col-6 col-lg-2-4">
               <div class="stat-card">
                 <div class="stat-icon kategori">
@@ -267,6 +291,7 @@
                     <polyline points="22 4 12 14.01 9 11.01" />
                   </svg>
                 </div>
+
                 <div class="stat-content">
                   <span class="stat-label">Kategori Dominan</span>
                   <span class="stat-value" id="statKategori">--</span>
@@ -281,6 +306,7 @@
           <div class="panel">
             <div class="panel-header">
               <h3>Tabel Data Riwayat</h3>
+
               <div class="table-search">
                 <svg
                   viewBox="0 0 24 24"
@@ -291,6 +317,7 @@
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
+
                 <input
                   type="text"
                   id="tableSearch"
@@ -298,6 +325,7 @@
                 />
               </div>
             </div>
+
             <div class="panel-body p-0">
               <div class="table-responsive">
                 <table class="data-table" id="riwayatTable">
@@ -311,15 +339,19 @@
                       <th>Skor Lingkungan</th>
                     </tr>
                   </thead>
+
                   <tbody id="tableBody">
-                    <!-- Data will be populated by JS -->
+                    <!-- Data akan diisi oleh JavaScript -->
                   </tbody>
                 </table>
               </div>
+
+              <!-- Pagination -->
               <div class="table-pagination">
-                <span class="pagination-info" id="paginationInfo"
-                  >Menampilkan 1-10 dari 0 data</span
-                >
+                <span class="pagination-info" id="paginationInfo">
+                  Menampilkan 0-0 dari 0 data
+                </span>
+
                 <div class="pagination-buttons">
                   <button class="btn-page" id="btnPrev" disabled>
                     <svg
@@ -331,8 +363,10 @@
                       <polyline points="15 18 9 12 15 6" />
                     </svg>
                   </button>
-                  <span class="page-indicator" id="pageIndicator">Hal 1</span>
-                  <button class="btn-page" id="btnNext">
+
+                  <span class="page-indicator" id="pageIndicator"> Hal 1 </span>
+
+                  <button class="btn-page" id="btnNext" disabled>
                     <svg
                       viewBox="0 0 24 24"
                       fill="none"
@@ -354,6 +388,7 @@
             <div class="panel-header">
               <h3>Unduh Data</h3>
             </div>
+
             <div class="panel-body">
               <div class="download-buttons">
                 <button class="btn-download csv" id="btnDownloadCsv">
@@ -369,6 +404,7 @@
                   </svg>
                   Unduh CSV
                 </button>
+
                 <button class="btn-download excel" id="btnDownloadExcel">
                   <svg
                     viewBox="0 0 24 24"
