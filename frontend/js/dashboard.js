@@ -803,22 +803,22 @@ function updateRecommendations(data) {
   const recommendations = [rekomendasi];
 
   // Informasi tambahan kelembapan tanah
-  if (sensorValid(soil) && soil >= 0 && soil <= 35) {
-    recommendations.push({
-      title: "Periksa Kelembapan Tanah",
-      desc: "Nilai kelembapan tanah berada pada rentang yang mengindikasikan kondisi kering dalam fungsi keanggotaan fuzzy. Periksa kondisi tanah dan kebutuhan air tanaman sebelum menyiram.",
-      icon: "warning",
-    });
-  }
+  // if (sensorValid(soil) && soil >= 0 && soil <= 35) {
+  //   recommendations.push({
+  //     title: "Periksa Kelembapan Tanah",
+  //     desc: "Nilai kelembapan tanah berada pada rentang yang mengindikasikan kondisi kering dalam fungsi keanggotaan fuzzy. Periksa kondisi tanah dan kebutuhan air tanaman sebelum menyiram.",
+  //     icon: "warning",
+  //   });
+  // }
 
   // Informasi tambahan PM2.5
-  if (sensorValid(pm25) && pm25 >= 45 && pm25 <= 150) {
-    recommendations.push({
-      title: "Perhatian pada PM2.5",
-      desc: "Nilai PM2.5 berada pada rentang fungsi keanggotaan TidakSehat atau lebih tinggi. Pantau kualitas udara dan evaluasi kemungkinan sumber pencemaran.",
-      icon: "warning",
-    });
-  }
+  // if (sensorValid(pm25) && pm25 >= 45 && pm25 <= 150) {
+  //   recommendations.push({
+  //     title: "Perhatian pada PM2.5",
+  //     desc: "Nilai PM2.5 berada pada rentang fungsi keanggotaan TidakSehat atau lebih tinggi. Pantau kualitas udara dan evaluasi kemungkinan sumber pencemaran.",
+  //     icon: "warning",
+  //   });
+  // }
 
   container.innerHTML = recommendations
     .map((rec) => `
