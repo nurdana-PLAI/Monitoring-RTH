@@ -381,15 +381,60 @@ function animateValue(element, start, end) {
 // ===================================
 // STATUS UPDATE
 // ===================================
+
 function updateStatus(data) {
   const skor = parseFloat(data.skor);
-  const kategori = data.kategori;
+  const kategoriRaw = String(data.kategori ?? "").trim();
 
   const gaugeFill = document.getElementById("gaugeFill");
   const gaugeValue = document.getElementById("gaugeValue");
+  const statusBadge = document.getElementById("statusBadge");
+  const valKategori = document.getElementById("valKategori");
+  const valSkor = document.getElementById("valSkor");
 
-  // Jika skor tidak tersedia
-  if (isNaN(skor)) {
+  const kategoriMap = {
+    "SangatBuruk": {
+      label: "Sangat Buruk",
+      className: "sangat-buruk",
+    },
+    "Sangat Buruk": {
+      label: "Sangat Buruk",
+      className: "sangat-buruk",
+    },
+    "Buruk": {
+      label: "Buruk",
+      className: "buruk",
+    },
+    "KurangBaik": {
+      label: "Buruk",
+      className: "buruk",
+    },
+    "Kurang Baik": {
+      label: "Buruk",
+      className: "buruk",
+    },
+    "Cukup": {
+      label: "Cukup",
+      className: "cukup",
+    },
+    "Baik": {
+      label: "Baik",
+      className: "baik",
+    },
+    "SangatBaik": {
+      label: "Sangat Baik",
+      className: "sangat-baik",
+    },
+    "Sangat Baik": {
+      label: "Sangat Baik",
+      className: "sangat-baik",
+    },
+  };
+
+  const status = kategoriMap[kategoriRaw];
+
+  // Skor tidak tersedia
+  if (!Number.isFinite(skor)) {
     if (gaugeFill) {
       gaugeFill.style.strokeDasharray = "0, 251";
     }
@@ -398,71 +443,57 @@ function updateStatus(data) {
       gaugeValue.textContent = "-";
     }
 
-    const statusBadge = document.getElementById("statusBadge");
-
     if (statusBadge) {
       statusBadge.className = "status-badge";
 
       const badgeText = statusBadge.querySelector(".badge-text");
-
-      if (badgeText) {
-        badgeText.textContent = "-";
-      }
+      if (badgeText) badgeText.textContent = "-";
     }
 
-    const valKategori = document.getElementById("valKategori");
-    if (valKategori) {
-      valKategori.textContent = "-";
-    }
-
-    const valSkor = document.getElementById("valSkor");
-    if (valSkor) {
-      valSkor.textContent = "-";
-    }
+    if (valKategori) valKategori.textContent = "-";
+    if (valSkor) valSkor.textContent = "-";
 
     return;
   }
 
   // Update gauge
-  if (gaugeFill && gaugeValue) {
+  if (gaugeFill) {
     const maxArc = 251;
     const percentage = Math.max(0, Math.min(skor, 100)) / 100;
     const arcLength = maxArc * percentage;
 
     gaugeFill.style.strokeDasharray = `${arcLength}, 251`;
+  }
+
+  if (gaugeValue) {
     animateValue(gaugeValue, 0, skor);
   }
 
-  // Update status badge
-  const statusBadge = document.getElementById("statusBadge");
-
+  // Update badge kategori
   if (statusBadge) {
     statusBadge.className = "status-badge";
 
-    if (kategori) {
-      statusBadge.classList.add(kategori.toLowerCase());
-    }
-
     const badgeText = statusBadge.querySelector(".badge-text");
 
-    if (badgeText) {
-      badgeText.textContent = kategori || "-";
+    if (status && badgeText) {
+      statusBadge.classList.add(status.className);
+      badgeText.textContent = status.label;
+    } else if (badgeText) {
+      badgeText.textContent = kategoriRaw || "-";
     }
   }
 
-  // Update details
-  const valKategori = document.getElementById("valKategori");
-
   if (valKategori) {
-    valKategori.textContent = kategori || "-";
+    valKategori.textContent = status
+      ? status.label
+      : kategoriRaw || "-";
   }
-
-  const valSkor = document.getElementById("valSkor");
 
   if (valSkor) {
-    valSkor.textContent = skor + "/100";
+    valSkor.textContent = `${skor}/100`;
   }
 }
+
 
 // ===================================
 // CHARTS
@@ -699,56 +730,61 @@ function updateQualityCircles(data) {
 // RECOMMENDATIONS
 // ===================================
 
+
 function updateRecommendations(data) {
   const container = document.getElementById("recommendationGrid");
   if (!container) return;
 
-  // Pastikan data sensor tersedia
   const kategoriRaw = String(data.kategori ?? "")
     .trim()
     .toLowerCase()
     .replace(/[\s_-]/g, "");
 
-  const suhu = Number(data.suhu);
-  const rh = Number(data.rh);
   const soil = Number(data.soil);
   const pm25 = Number(data.pm25);
 
-  const sensorValid = (value) =>
-    Number.isFinite(value);
+  const sensorValid = (value) => Number.isFinite(value);
 
-  // Rekomendasi utama berdasarkan kategori output fuzzy
   const rekomendasiKategori = {
+    sangatburuk: {
+      title: "Kondisi Lingkungan Sangat Buruk",
+      desc: "Periksa kondisi lingkungan dan validitas pembacaan sensor. Identifikasi parameter yang bermasalah, evaluasi kondisi tanah dan vegetasi, serta periksa kemungkinan sumber pencemaran udara untuk menentukan tindakan perbaikan yang sesuai.",
+      icon: "warning",
+    },
+
     buruk: {
       title: "Kondisi Lingkungan Buruk",
-      desc: "Periksa kondisi tanaman dan kelembapan tanah. Lakukan penyiraman apabila tanah terlalu kering sesuai kebutuhan tanaman, serta evaluasi kemungkinan sumber pencemaran udara.",
+      desc: "Identifikasi parameter lingkungan yang kurang optimal. Periksa kesehatan tanaman dan kelembapan tanah, lakukan penyiraman sesuai kebutuhan tanaman, serta evaluasi kemungkinan sumber pencemaran udara.",
       icon: "warning",
     },
+
     kurangbaik: {
-      title: "Kondisi Lingkungan Kurang Baik",
-      desc: "Pantau parameter yang kurang optimal, evaluasi kebutuhan penyiraman, periksa kesehatan tanaman, dan identifikasi kemungkinan sumber pencemaran udara.",
+      title: "Kondisi Lingkungan Buruk",
+      desc: "Identifikasi parameter lingkungan yang kurang optimal. Periksa kesehatan tanaman dan kelembapan tanah, lakukan penyiraman sesuai kebutuhan tanaman, serta evaluasi kemungkinan sumber pencemaran udara.",
       icon: "warning",
     },
+
     cukup: {
       title: "Kondisi Lingkungan Cukup",
-      desc: "Lanjutkan pemeliharaan rutin. Perhatikan parameter yang kurang optimal, sesuaikan penyiraman dengan kebutuhan tanaman, dan pantau perubahan kualitas udara.",
+      desc: "Lanjutkan pemeliharaan rutin. Perhatikan parameter yang belum optimal, sesuaikan penyiraman dengan kebutuhan tanaman, dan pantau perubahan kualitas udara.",
       icon: "success",
     },
+
     baik: {
       title: "Kondisi Lingkungan Baik",
       desc: "Pertahankan kondisi lingkungan melalui pemeliharaan vegetasi, pemantauan kelembapan tanah, dan pemeriksaan parameter lingkungan secara berkala.",
       icon: "success",
     },
+
     sangatbaik: {
       title: "Kondisi Lingkungan Sangat Baik",
-      desc: "Pertahankan kondisi lingkungan melalui perawatan vegetasi dan pemantauan sensor secara berkala untuk memastikan kondisi tetap terjaga.",
+      desc: "Pertahankan kondisi lingkungan melalui perawatan vegetasi dan pemantauan sensor secara berkala.",
       icon: "success",
     },
   };
 
   const rekomendasi = rekomendasiKategori[kategoriRaw];
 
-  // Jika kategori fuzzy tidak tersedia, jangan menebak kondisi
   if (!rekomendasi) {
     container.innerHTML = `
       <div class="recommendation-card">
@@ -764,32 +800,26 @@ function updateRecommendations(data) {
     return;
   }
 
-  // Rekomendasi utama sesuai kategori fuzzy
-  const recommendations = [
-    rekomendasi,
-  ];
+  const recommendations = [rekomendasi];
 
-  // Informasi tambahan berdasarkan nilai sensor.
-  // Ini bukan pengganti rekomendasi utama fuzzy.
+  // Informasi tambahan kelembapan tanah
   if (sensorValid(soil) && soil >= 0 && soil <= 35) {
     recommendations.push({
       title: "Periksa Kelembapan Tanah",
-      desc: "Tanah terindikasi kering berdasarkan rentang keanggotaan fuzzy. Periksa kondisi tanah dan kebutuhan air tanaman sebelum melakukan penyiraman.",
+      desc: "Nilai kelembapan tanah berada pada rentang yang mengindikasikan kondisi kering dalam fungsi keanggotaan fuzzy. Periksa kondisi tanah dan kebutuhan air tanaman sebelum menyiram.",
       icon: "warning",
     });
   }
 
-  if (sensorValid(pm25) && pm25 >= 0 && pm25 <= 150) {
-    if (pm25 >= 45) {
-      recommendations.push({
-        title: "Perhatian pada PM2.5",
-        desc: "Nilai PM2.5 berada pada rentang yang mulai masuk kategori Tidak Sehat dalam fungsi keanggotaan fuzzy. Pantau kualitas udara dan evaluasi kemungkinan sumber pencemaran.",
-        icon: "warning",
-      });
-    }
+  // Informasi tambahan PM2.5
+  if (sensorValid(pm25) && pm25 >= 45 && pm25 <= 150) {
+    recommendations.push({
+      title: "Perhatian pada PM2.5",
+      desc: "Nilai PM2.5 berada pada rentang fungsi keanggotaan TidakSehat atau lebih tinggi. Pantau kualitas udara dan evaluasi kemungkinan sumber pencemaran.",
+      icon: "warning",
+    });
   }
 
-  // Tampilkan rekomendasi
   container.innerHTML = recommendations
     .map((rec) => `
       <div class="recommendation-card">
@@ -816,6 +846,7 @@ function updateRecommendations(data) {
     `)
     .join("");
 }
+
 
 
 // ===================================
