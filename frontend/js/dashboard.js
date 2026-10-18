@@ -678,8 +678,8 @@ function updateQualityCircles(data) {
       id: "circlePm25",
       valId: "circleValPm25",
       value: parseFloat(data.pm25),
-      max: 100,
-      unit: "",
+      max: 150,
+      unit: " µg/m³",
     },
   ];
 
@@ -698,67 +698,125 @@ function updateQualityCircles(data) {
 // ===================================
 // RECOMMENDATIONS
 // ===================================
+
 function updateRecommendations(data) {
   const container = document.getElementById("recommendationGrid");
   if (!container) return;
 
-  const suhu = parseFloat(data.suhu);
-  const rh = parseFloat(data.rh);
-  const soil = parseFloat(data.soil);
-  const pm25 = parseFloat(data.pm25);
+  // Pastikan data sensor tersedia
+  const kategoriRaw = String(data.kategori ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]/g, "");
 
-  const recommendations = [
-    {
+  const suhu = Number(data.suhu);
+  const rh = Number(data.rh);
+  const soil = Number(data.soil);
+  const pm25 = Number(data.pm25);
+
+  const sensorValid = (value) =>
+    Number.isFinite(value);
+
+  // Rekomendasi utama berdasarkan kategori output fuzzy
+  const rekomendasiKategori = {
+    buruk: {
+      title: "Kondisi Lingkungan Buruk",
+      desc: "Periksa kondisi tanaman dan kelembapan tanah. Lakukan penyiraman apabila tanah terlalu kering sesuai kebutuhan tanaman, serta evaluasi kemungkinan sumber pencemaran udara.",
+      icon: "warning",
+    },
+    kurangbaik: {
+      title: "Kondisi Lingkungan Kurang Baik",
+      desc: "Pantau parameter yang kurang optimal, evaluasi kebutuhan penyiraman, periksa kesehatan tanaman, dan identifikasi kemungkinan sumber pencemaran udara.",
+      icon: "warning",
+    },
+    cukup: {
+      title: "Kondisi Lingkungan Cukup",
+      desc: "Lanjutkan pemeliharaan rutin. Perhatikan parameter yang kurang optimal, sesuaikan penyiraman dengan kebutuhan tanaman, dan pantau perubahan kualitas udara.",
       icon: "success",
-      title: "Monitoring Rutin",
-      desc: "Lanjutkan pemantauan parameter lingkungan secara berkala",
     },
-    {
-      icon: soil < 40 ? "warning" : "success",
-      title: soil < 40 ? "Diperlukan Penyiraman" : "Kelembaban Tanah Cukup",
-      desc:
-        soil < 40
-          ? "Tingkatkan frekuensi penyiraman tanaman"
-          : "Tidak diperlukan penyiraman tambahan",
+    baik: {
+      title: "Kondisi Lingkungan Baik",
+      desc: "Pertahankan kondisi lingkungan melalui pemeliharaan vegetasi, pemantauan kelembapan tanah, dan pemeriksaan parameter lingkungan secara berkala.",
+      icon: "success",
     },
-    {
-      icon: pm25 > 35 ? "warning" : "success",
-      title: pm25 > 35 ? "Kualitas Udara Menurun" : "Kualitas Udara Aman",
-      desc:
-        pm25 > 35
-          ? "Pertimbangkan pengurangan aktivitas di area ini"
-          : "Kualitas udara masih dalam batas aman",
+    sangatbaik: {
+      title: "Kondisi Lingkungan Sangat Baik",
+      desc: "Pertahankan kondisi lingkungan melalui perawatan vegetasi dan pemantauan sensor secara berkala untuk memastikan kondisi tetap terjaga.",
+      icon: "success",
     },
-    {
-      icon: suhu > 35 ? "warning" : "success",
-      title: suhu > 35 ? "Suhu Tinggi" : "Suhu Normal",
-      desc:
-        suhu > 35
-          ? "Aktifkan sistem pendingin tambahan"
-          : "Tidak diperlukan tindakan korektif",
-    },
+  };
+
+  const rekomendasi = rekomendasiKategori[kategoriRaw];
+
+  // Jika kategori fuzzy tidak tersedia, jangan menebak kondisi
+  if (!rekomendasi) {
+    container.innerHTML = `
+      <div class="recommendation-card">
+        <div class="rec-content">
+          <h4>Rekomendasi Belum Tersedia</h4>
+          <p>
+            Kategori output fuzzy belum tersedia atau tidak dikenali.
+            Periksa data hasil pemrosesan fuzzy dari server.
+          </p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Rekomendasi utama sesuai kategori fuzzy
+  const recommendations = [
+    rekomendasi,
   ];
 
+  // Informasi tambahan berdasarkan nilai sensor.
+  // Ini bukan pengganti rekomendasi utama fuzzy.
+  if (sensorValid(soil) && soil >= 0 && soil <= 35) {
+    recommendations.push({
+      title: "Periksa Kelembapan Tanah",
+      desc: "Tanah terindikasi kering berdasarkan rentang keanggotaan fuzzy. Periksa kondisi tanah dan kebutuhan air tanaman sebelum melakukan penyiraman.",
+      icon: "warning",
+    });
+  }
+
+  if (sensorValid(pm25) && pm25 >= 0 && pm25 <= 150) {
+    if (pm25 >= 45) {
+      recommendations.push({
+        title: "Perhatian pada PM2.5",
+        desc: "Nilai PM2.5 berada pada rentang yang mulai masuk kategori Tidak Sehat dalam fungsi keanggotaan fuzzy. Pantau kualitas udara dan evaluasi kemungkinan sumber pencemaran.",
+        icon: "warning",
+      });
+    }
+  }
+
+  // Tampilkan rekomendasi
   container.innerHTML = recommendations
-    .map(
-      (rec) => `
-        <div class="recommendation-card">
-            <div class="rec-icon ${rec.icon}">
-                ${
-                  rec.icon === "success"
-                    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>'
-                    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-                }
-            </div>
-            <div class="rec-content">
-                <h4>${rec.title}</h4>
-                <p>${rec.desc}</p>
-            </div>
+    .map((rec) => `
+      <div class="recommendation-card">
+        <div class="rec-icon ${rec.icon}">
+          ${
+            rec.icon === "success"
+              ? `<svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>`
+              : `<svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17.01"/>
+                </svg>`
+          }
         </div>
-    `,
-    )
+        <div class="rec-content">
+          <h4>${rec.title}</h4>
+          <p>${rec.desc}</p>
+        </div>
+      </div>
+    `)
     .join("");
 }
+
 
 // ===================================
 // EVENT LISTENERS
