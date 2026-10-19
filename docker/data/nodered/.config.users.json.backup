@@ -29,15 +29,15 @@
                                 "config",
                                 "context"
                             ],
-                            "height": 481.266,
-                            "hidden": true,
+                            "height": 473.266,
+                            "hidden": false,
                             "active": "help"
                         },
                         "bottom": {
                             "tabs": [
                                 "debug"
                             ],
-                            "hidden": true,
+                            "hidden": false,
                             "active": "debug"
                         }
                     },
@@ -67,6 +67,6 @@
             "filteredNodes": []
         },
         "menu-menu-item-left-sidebar": false,
-        "menu-menu-item-right-sidebar": false
+        "menu-menu-item-right-sidebar": true
     }
 }

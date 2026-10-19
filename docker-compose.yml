@@ -1,0 +1,40 @@
+version: '3.8'
+services:
+  web-dashboard:
+    image: nginx:alpine
+    container_name: dashboard_web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    restart: always
+    networks:
+      - iot-network
+  node-red:
+    image: nodered/node-red:latest
+    container_name: dashboard_nodered
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./nodered-data:/data
+    restart: always
+    environment:
+      - TZ=Asia/Jakarta
+    networks:
+      - iot-network
+    depends_on:
+      - questdb
+  questdb:
+    image: questdb/questdb:latest
+    container_name: dashboard_questdb
+    ports:
+      - "9000:9000"
+      - "8812:8812"
+    volumes:
+      - ./data:/var/lib/questdb
+    restart: always
+    networks:
+      - iot-network
+networks:
+  iot-network:
+    driver: bridge

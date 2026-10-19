@@ -16,6 +16,14 @@
         "env": []
     },
     {
+        "id": "dd89b028265e3a76",
+        "type": "tab",
+        "label": "Raw Data",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "dab6edf519d82253",
         "type": "tab",
         "label": "Sensor",
@@ -61,7 +69,7 @@
                 "p": "payload"
             }
         ],
-        "repeat": "60",
+        "repeat": "3600",
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
@@ -226,16 +234,109 @@
         ]
     },
     {
+        "id": "6972aa24112c2f9e",
+        "type": "http in",
+        "z": "dd89b028265e3a76",
+        "name": "API Raw",
+        "url": "/api/history/raw",
+        "method": "get",
+        "upload": false,
+        "skipBodyParsing": false,
+        "swaggerDoc": "",
+        "x": 520,
+        "y": 200,
+        "wires": [
+            [
+                "ea06270e3f9fd96b"
+            ]
+        ]
+    },
+    {
+        "id": "ea06270e3f9fd96b",
+        "type": "function",
+        "z": "dd89b028265e3a76",
+        "name": "function 5",
+        "func": "const period = String(\n    msg.req.query.period || \"24h\"\n).trim().toLowerCase();\n\nlet periodFilter = \"\";\n\nswitch (period) {\n    case \"24h\":\n        periodFilter = \"dateadd('h', -24, now())\";\n        break;\n\n    case \"weekly\":\n        periodFilter = \"dateadd('d', -7, now())\";\n        break;\n\n    case \"monthly\":\n        periodFilter = \"dateadd('d', -30, now())\";\n        break;\n\n    case \"yearly\":\n        periodFilter = \"dateadd('d', -365, now())\";\n        break;\n\n    default:\n        msg.statusCode = 400;\n        msg.payload = {\n            error: \"Periode tidak valid\",\n            received: period,\n            allowed: [\n                \"24h\",\n                \"weekly\",\n                \"monthly\",\n                \"yearly\"\n            ]\n        };\n        return msg;\n}\n\nconst query = `\nSELECT\n    timestamp,\n    loc_id,\n    sensor_id,\n    sensor_type,\n    unit,\n    value,\n    ikl,\n    ikl_label\nFROM sensor_readings\nWHERE timestamp >= ${periodFilter}\nORDER BY timestamp ASC;\n`;\n\nmsg.method = \"GET\";\n\nmsg.url =\n    \"http://questdb:9000/exec?query=\" +\n    encodeURIComponent(query);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 300,
+        "wires": [
+            [
+                "87046db5668ee1fd"
+            ]
+        ]
+    },
+    {
+        "id": "b6054301659c2d3f",
+        "type": "http response",
+        "z": "dd89b028265e3a76",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 570,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "87046db5668ee1fd",
+        "type": "http request",
+        "z": "dd89b028265e3a76",
+        "name": "",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 490,
+        "y": 380,
+        "wires": [
+            [
+                "a377ef5da1bd7114"
+            ]
+        ]
+    },
+    {
+        "id": "a377ef5da1bd7114",
+        "type": "function",
+        "z": "dd89b028265e3a76",
+        "name": "function 6",
+        "func": "const headers = {\n    \"Access-Control-Allow-Origin\": \"*\",\n    \"Access-Control-Allow-Methods\": \"GET, OPTIONS\",\n    \"Access-Control-Allow-Headers\":\n        \"Content-Type, Authorization, X-Requested-With\",\n    \"Content-Type\": \"application/json\"\n};\n\nmsg.headers = headers;\n\nconst rows = msg.payload?.dataset || [];\n\nmsg.statusCode = 200;\n\nmsg.payload = rows.map(row => ({\n    timestamp: row[0],\n    sensor_id: row[1],\n    sensor_type: row[2],\n    unit: row[3],\n    value: row[4],\n    ikl: row[5],\n    ikl_label: row[6]\n}));\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 440,
+        "wires": [
+            [
+                "b6054301659c2d3f"
+            ]
+        ]
+    },
+    {
         "id": "6e8d0618c827a199",
         "type": "http in",
         "z": "dab6edf519d82253",
-        "name": "API Latest",
+        "name": "API",
         "url": "/api/history",
         "method": "get",
         "upload": false,
         "skipBodyParsing": false,
         "swaggerDoc": "",
-        "x": 860,
+        "x": 850,
         "y": 300,
         "wires": [
             [
@@ -248,7 +349,7 @@
         "type": "function",
         "z": "dab6edf519d82253",
         "name": "function 4",
-        "func": "const rows = msg.payload.dataset || [];\n\nmsg.payload = rows.map(row => ({\n    timestamp: row[0],\n    value: row[1]\n}));\n\nmsg.headers = {\n    \"Access-Control-Allow-Origin\": \"*\",\n    \"Access-Control-Allow-Methods\": \"GET, OPTIONS\",\n    \"Access-Control-Allow-Headers\": \"Content-Type, Authorization, X-Requested-With\"\n};\n\nreturn msg;",
+        "func": "const rows = msg.payload.dataset || [];\n\nmsg.payload = rows.map(row => ({\n    timestamp: row[0],\n    value: row[1],\n    ikl: row[2]\n}));\n\nmsg.headers = {\n    \"Access-Control-Allow-Origin\": \"*\",\n    \"Access-Control-Allow-Methods\": \"GET, OPTIONS\",\n    \"Access-Control-Allow-Headers\":\n        \"Content-Type, Authorization, X-Requested-With\"\n};\n\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -303,7 +404,7 @@
         "type": "function",
         "z": "dab6edf519d82253",
         "name": "function 3",
-        "func": "const sensor = msg.req.query.sensor || \"temperature\";\n\nconst query = `\nSELECT\n    timestamp,\n    avg(value) AS value\nFROM sensor_readings\nWHERE sensor_type='${sensor}'\nAND timestamp >= dateadd('h', -24, now())\nSAMPLE BY 5m\nORDER BY timestamp;\n`;\n\nmsg.method = \"GET\";\nmsg.url = \"http://questdb:9000/exec?query=\" + encodeURIComponent(query);\n\nreturn msg;",
+        "func": "const sensor = msg.req.query.sensor || \"temperature\";\nconst period = msg.req.query.period || \"24h\";\n\n// ===================================\n// VALIDASI SENSOR\n// ===================================\nconst allowedSensors = [\n    \"temperature\",\n    \"humidity\",\n    \"soil_humidity\",\n    \"pm25\"\n];\n\nif (!allowedSensors.includes(sensor)) {\n    msg.statusCode = 400;\n    msg.payload = {\n        error: \"Sensor tidak valid\",\n        sensor: sensor,\n        allowed: allowedSensors\n    };\n    return msg;\n}\n\n// ===================================\n// PERIODE\n// ===================================\nlet periodFilter = \"\";\nlet sampleBy = \"\";\n\nswitch (period) {\n\n    case \"24h\":\n        periodFilter = \"dateadd('h', -24, now())\";\n        sampleBy = \"5m\";\n        break;\n\n    case \"weekly\":\n        periodFilter = \"dateadd('d', -7, now())\";\n        sampleBy = \"1h\";\n        break;\n\n    case \"monthly\":\n        periodFilter = \"dateadd('d', -30, now())\";\n        sampleBy = \"6h\";\n        break;\n\n    case \"yearly\":\n        periodFilter = \"dateadd('d', -365, now())\";\n        sampleBy = \"1d\";\n        break;\n\n    default:\n        msg.statusCode = 400;\n        msg.payload = {\n            error: \"Periode tidak valid\",\n            period: period\n        };\n        return msg;\n}\n\n// ===================================\n// QUERY QUESTDB\n// ===================================\nconst query = `\nSELECT\n    timestamp,\n    avg(value) AS value,\n    avg(ikl) AS ikl\nFROM sensor_readings\nWHERE sensor_type = '${sensor}'\nAND timestamp >= ${periodFilter}\nSAMPLE BY ${sampleBy}\nORDER BY timestamp ASC;\n`;\n\nmsg.method = \"GET\";\n\nmsg.url =\n    \"http://questdb:9000/exec?query=\" +\n    encodeURIComponent(query);\n\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,

@@ -21,7 +21,7 @@
                     "v": 4,
                     "tabs": [],
                     "primary": {
-                        "width": 0,
+                        "width": 514,
                         "top": {
                             "tabs": [
                                 "info",
@@ -29,7 +29,7 @@
                                 "config",
                                 "context"
                             ],
-                            "height": 473.266,
+                            "height": 475.266,
                             "hidden": false,
                             "active": "help"
                         },

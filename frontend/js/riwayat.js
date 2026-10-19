@@ -54,78 +54,134 @@ function initSidebar() {
 // ===================================
 // DATA LOADING
 // ===================================
+// ===================================
+// DATA LOADING
+// ===================================
 async function loadRiwayatData() {
-  try {
-    console.log("Loading history...");
+  const periode = document.getElementById("filterPeriode")?.value || "24h";
 
-    //const baseUrl = "http://localhost:1880/api/history";
-    const baseUrl = `${window.location.protocol}//${window.location.host}:1880/api/history`;
-	  
-    const [tempRes, humRes, soilRes, pmRes] = await Promise.all([
-      fetch(`${baseUrl}?sensor=temperature`),
-      fetch(`${baseUrl}?sensor=humidity`),
-      fetch(`${baseUrl}?sensor=soil_humidity`),
-      fetch(`${baseUrl}?sensor=pm25`),
-    ]);
+  await fetchRiwayatData(periode);
+}
+
+// ===================================
+// FETCH DATA BERDASARKAN PERIODE
+// ===================================
+async function fetchRiwayatData(periode) {
+  try {
+    showLoading(true);
+
+    const baseUrl = "http://192.168.88.99:1880/api/history";
+
+    const urls = [
+      `${baseUrl}?sensor=temperature&period=${periode}`,
+      `${baseUrl}?sensor=humidity&period=${periode}`,
+      `${baseUrl}?sensor=soil_humidity&period=${periode}`,
+      `${baseUrl}?sensor=pm25&period=${periode}`,
+    ];
+
+    console.log("=== FETCH RIWAYAT ===");
+    console.log("Periode:", periode);
+    console.log("Temperature:", urls[0]);
+    console.log("Humidity:", urls[1]);
+    console.log("Soil:", urls[2]);
+    console.log("PM2.5:", urls[3]);
+
+    const [tempRes, humRes, soilRes, pmRes] = await Promise.all(
+      urls.map((url) =>
+        fetch(url, {
+          cache: "no-store",
+        }),
+      ),
+    );
+
+    console.log("Status:");
+    console.log("Temperature:", tempRes.status);
+    console.log("Humidity:", humRes.status);
+    console.log("Soil:", soilRes.status);
+    console.log("PM2.5:", pmRes.status);
+
+    if (!tempRes.ok || !humRes.ok || !soilRes.ok || !pmRes.ok) {
+      throw new Error("Salah satu API history gagal");
+    }
 
     const temperature = await tempRes.json();
     const humidity = await humRes.json();
     const soil = await soilRes.json();
     const pm25 = await pmRes.json();
 
-    console.log("Temperature", temperature);
-    console.log("Humidity", humidity);
-    console.log("Soil", soil);
-    console.log("PM25", pm25);
+    console.log("Data Temperature:", temperature);
+    console.log("Data Humidity:", humidity);
+    console.log("Data Soil:", soil);
+    console.log("Data PM2.5:", pm25);
 
+    // Gabungkan berdasarkan timestamp
     riwayatData = mergeSensorData(temperature, humidity, soil, pm25);
 
+    // Awalnya semua data ditampilkan
     filteredData = [...riwayatData];
 
-    console.log("Merged", riwayatData);
+    console.log("=== HASIL GABUNGAN ===");
+    console.table(riwayatData);
+
+    currentPage = 1;
 
     updateHistoricalChart(filteredData);
     updateStatistics(filteredData);
     renderTable();
+  } catch (error) {
+    console.error("Gagal mengambil data riwayat:", error);
 
-    showLoading(false);
-  } catch (err) {
-    console.error(err);
+    riwayatData = [];
+    filteredData = [];
 
-    riwayatData = generateDummyRiwayat();
-    filteredData = [...riwayatData];
-
-    updateHistoricalChart(filteredData);
-    updateStatistics(filteredData);
+    updateHistoricalChart([]);
+    updateStatistics([]);
     renderTable();
-
+  } finally {
     showLoading(false);
   }
 }
 
-function mergeSensorData(temp, hum, soil, pm) {
-  const result = [];
+// ===================================
+// MERGE SENSOR DATA
+// ===================================
+function mergeSensorData(temp, hum, soil, pm25) {
+  const dataMap = new Map();
 
-  const length = Math.min(temp.length, hum.length, soil.length, pm.length);
+  function addData(rows, field) {
+    rows.forEach((row) => {
+      const timestamp = row.timestamp;
 
-  for (let i = 0; i < length; i++) {
-    result.push({
-      tanggal: temp[i].timestamp,
+      if (!dataMap.has(timestamp)) {
+        dataMap.set(timestamp, {
+          tanggal: timestamp,
+          suhu: null,
+          rh: null,
+          soil: null,
+          pm25: null,
+          skor: null,
+        });
+      }
 
-      suhu: temp[i].value,
+      const item = dataMap.get(timestamp);
 
-      rh: hum[i].value,
+      item[field] = Number(row.value);
 
-      soil: soil[i].value,
-
-      pm25: pm[i].value,
-
-      // sementara dummy
-      skor: 80,
+      // Ambil nilai IKL
+      if (row.ikl !== null && row.ikl !== undefined) {
+        item.skor = Number(row.ikl);
+      }
     });
   }
 
-  return result;
+  addData(temp, "suhu");
+  addData(hum, "rh");
+  addData(soil, "soil");
+  addData(pm25, "pm25");
+
+  return Array.from(dataMap.values()).sort(
+    (a, b) => new Date(a.tanggal) - new Date(b.tanggal),
+  );
 }
 
 function parseCSV(csvText) {
@@ -281,12 +337,48 @@ function updateHistoricalChart(data) {
 }
 
 function formatDate(timestamp) {
+  if (!timestamp) return "-";
+
   const d = new Date(timestamp);
 
-  return d.toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  if (isNaN(d.getTime())) return "-";
+
+  const periode = document.getElementById("filterPeriode")?.value || "24h";
+
+  if (periode === "24h") {
+    return d.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+
+  if (periode === "weekly") {
+    return d.toLocaleString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  }
+
+  if (periode === "monthly") {
+    return d.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+    });
+  }
+
+  if (periode === "yearly") {
+    return d.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  return d.toLocaleString("id-ID");
 }
 
 // ===================================
@@ -342,9 +434,15 @@ function renderTable() {
             <td>${row.soil.toFixed(2)} %</td>
             <td>${row.pm25.toFixed(2)} µg/m³</td>
             <td>
-                <span class="skor-badge ${getSkorClass(row.skor)}">${
-                  row.skor
-                }</span>
+                <span class="skor-badge ${getSkorClass(row.skor)}">
+                    ${
+                      row.skor !== null &&
+                      row.skor !== undefined &&
+                      !isNaN(Number(row.skor))
+                        ? Number(row.skor).toFixed(2)
+                        : "-"
+                    }
+                </span>
             </td>
         </tr>
     `,
@@ -355,9 +453,20 @@ function renderTable() {
 }
 
 function formatFullDate(timestamp) {
+  if (!timestamp) return "-";
+
   const d = new Date(timestamp);
 
-  return d.toLocaleString("id-ID");
+  if (isNaN(d.getTime())) return "-";
+
+  return d.toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 function getSkorClass(skore) {
@@ -434,73 +543,79 @@ function initEventListeners() {
   document
     .getElementById("btnDownloadExcel")
     ?.addEventListener("click", downloadExcel);
+
+  document
+    .getElementById("btnDownloadRaw")
+    ?.addEventListener("click", downloadRawData);
 }
 
-function applyFilter() {
+// ===================================
+// APPLY FILTER
+// ===================================
+async function applyFilter() {
   const periode = document.getElementById("filterPeriode").value;
+
   const parameter = document.getElementById("filterParameter").value;
 
-  // Filter by period (simplified)
-  const now = new Date();
-  let filterDate = new Date();
+  console.log("=== TERAPKAN FILTER ===");
+  console.log("Periode:", periode);
+  console.log("Parameter:", parameter);
 
-  switch (periode) {
-    case "mingguan":
-      filterDate.setDate(now.getDate() - 7);
-      break;
-    case "bulanan":
-      filterDate.setMonth(now.getMonth() - 1);
-      break;
-    case "tahunan":
-      filterDate.setFullYear(now.getFullYear() - 1);
-      break;
-  }
+  // Fetch ulang dari API
+  await fetchRiwayatData(periode);
 
-  // Apply filter
-  filteredData = riwayatData.filter((row) => {
-    const rowDate = new Date(row.tanggal);
-    return rowDate >= filterDate;
-  });
+  // Tampilkan dataset sesuai parameter
+  updateChartByParameter(parameter);
 
-  // Update chart based on parameter
-  if (parameter !== "semua") {
-    updateChartByParameter(parameter);
-  } else {
-    updateHistoricalChart(filteredData);
-  }
-
+  // Reset halaman tabel
   currentPage = 1;
+
   renderTable();
-  updateStatistics(filteredData);
 }
 
+// ===================================
+// UPDATE CHART BY PARAMETER
+// ===================================
 function updateChartByParameter(parameter) {
   if (!historicalChart) return;
 
-  // Hide all datasets first
+  // Semua dataset disembunyikan dulu
   historicalChart.data.datasets.forEach((dataset) => {
     dataset.hidden = true;
   });
 
-  // Show only selected parameter
   const datasetMap = {
     suhu: 0,
     rh: 1,
     soil: 2,
     pm25: 3,
-    skor: 0, // Use first dataset for score
   };
 
-  if (datasetMap[parameter] !== undefined) {
-    historicalChart.data.datasets[datasetMap[parameter]].hidden = false;
-  } else {
-    // Show all
+  // Jika Semua Sensor
+  if (parameter === "semua") {
     historicalChart.data.datasets.forEach((dataset) => {
       dataset.hidden = false;
     });
+  } else {
+    const index = datasetMap[parameter];
+
+    if (index !== undefined) {
+      historicalChart.data.datasets[index].hidden = false;
+    }
   }
 
+  // Label grafik
   historicalChart.data.labels = filteredData.map((d) => formatDate(d.tanggal));
+
+  // Data masing-masing sensor
+  historicalChart.data.datasets[0].data = filteredData.map((d) => d.suhu);
+
+  historicalChart.data.datasets[1].data = filteredData.map((d) => d.rh);
+
+  historicalChart.data.datasets[2].data = filteredData.map((d) => d.soil);
+
+  historicalChart.data.datasets[3].data = filteredData.map((d) => d.pm25);
+
   historicalChart.update("active");
 }
 
@@ -543,6 +658,164 @@ function downloadExcel() {
     .toISOString()
     .slice(0, 10)}.xls`;
   link.click();
+}
+
+async function downloadRawData() {
+
+  const periode =
+    document.getElementById("filterPeriode")?.value || "24h";
+
+  const url =
+    `http://192.168.88.99:1880/api/history/raw?period=${encodeURIComponent(periode)}`;
+
+  console.log("=================================");
+  console.log("DOWNLOAD DATA RAW");
+  console.log("Periode:", periode);
+  console.log("URL:", url);
+  console.log("=================================");
+
+  try {
+
+    showLoading(true);
+
+    const response = await fetch(url, {
+      method: "GET",
+      cache: "no-store"
+    });
+
+    console.log("HTTP Status:", response.status);
+    console.log("HTTP OK:", response.ok);
+
+    // Ambil response sebagai text terlebih dahulu
+    // supaya kalau server mengirim error kita bisa melihatnya
+    const responseText = await response.text();
+
+    console.log("Response Server:");
+    console.log(responseText);
+
+    if (!response.ok) {
+      throw new Error(
+        `HTTP ${response.status}: ${responseText}`
+      );
+    }
+
+    let data;
+
+    try {
+      data = JSON.parse(responseText);
+    } catch (error) {
+      throw new Error(
+        "Response server bukan JSON yang valid."
+      );
+    }
+
+    console.log("Jumlah data raw:", data.length);
+    console.table(data);
+
+    if (!Array.isArray(data) || data.length === 0) {
+
+      alert(
+        `Tidak ada data raw untuk periode ${periode}.`
+      );
+
+      return;
+    }
+
+    // ===================================
+    // HEADER CSV
+    // ===================================
+    const headers = [
+      "timestamp",
+      "source",
+      "sensor_id",
+      "sensor_type",
+      "unit",
+      "value",
+      "ikl",
+      "ikl_label"
+    ];
+
+    // ===================================
+    // DATA CSV
+    // ===================================
+    const csvRows = [
+      headers.join(","),
+
+      ...data.map(row =>
+        headers
+          .map(header => {
+
+            const value = row[header];
+
+            if (
+              value === null ||
+              value === undefined
+            ) {
+              return "";
+            }
+
+            return `"${String(value)
+              .replace(/"/g, '""')}"`;
+          })
+          .join(",")
+      )
+    ];
+
+    const csvContent =
+      "\uFEFF" + csvRows.join("\n");
+
+    // ===================================
+    // DOWNLOAD
+    // ===================================
+    const blob = new Blob(
+      [csvContent],
+      {
+        type: "text/csv;charset=utf-8;"
+      }
+    );
+
+    const link =
+      document.createElement("a");
+
+    const downloadUrl =
+      URL.createObjectURL(blob);
+
+    link.href = downloadUrl;
+
+    link.download =
+      `data_raw_${periode}_${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(downloadUrl);
+
+    console.log(
+      `Berhasil mengunduh ${data.length} record raw.`
+    );
+
+  } catch (error) {
+
+    console.error(
+      "Gagal download data raw:",
+      error
+    );
+
+    alert(
+      "Gagal mengambil data raw.\n\n" +
+      error.message
+    );
+
+  } finally {
+
+    showLoading(false);
+
+  }
 }
 
 // ===================================
