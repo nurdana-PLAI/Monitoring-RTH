@@ -383,15 +383,60 @@ function animateValue(element, start, end) {
 // ===================================
 // STATUS UPDATE
 // ===================================
+
 function updateStatus(data) {
   const skor = parseFloat(data.skor);
-  const kategori = data.kategori;
+  const kategoriRaw = String(data.kategori ?? "").trim();
 
   const gaugeFill = document.getElementById("gaugeFill");
   const gaugeValue = document.getElementById("gaugeValue");
+  const statusBadge = document.getElementById("statusBadge");
+  const valKategori = document.getElementById("valKategori");
+  const valSkor = document.getElementById("valSkor");
 
-  // Jika skor tidak tersedia
-  if (isNaN(skor)) {
+  const kategoriMap = {
+    "SangatBuruk": {
+      label: "Sangat Buruk",
+      className: "sangat-buruk",
+    },
+    "Sangat Buruk": {
+      label: "Sangat Buruk",
+      className: "sangat-buruk",
+    },
+    "Buruk": {
+      label: "Buruk",
+      className: "buruk",
+    },
+    "KurangBaik": {
+      label: "Buruk",
+      className: "buruk",
+    },
+    "Kurang Baik": {
+      label: "Buruk",
+      className: "buruk",
+    },
+    "Cukup": {
+      label: "Cukup",
+      className: "cukup",
+    },
+    "Baik": {
+      label: "Baik",
+      className: "baik",
+    },
+    "SangatBaik": {
+      label: "Sangat Baik",
+      className: "sangat-baik",
+    },
+    "Sangat Baik": {
+      label: "Sangat Baik",
+      className: "sangat-baik",
+    },
+  };
+
+  const status = kategoriMap[kategoriRaw];
+
+  // Skor tidak tersedia
+  if (!Number.isFinite(skor)) {
     if (gaugeFill) {
       gaugeFill.style.strokeDasharray = "0, 251";
     }
@@ -400,71 +445,57 @@ function updateStatus(data) {
       gaugeValue.textContent = "-";
     }
 
-    const statusBadge = document.getElementById("statusBadge");
-
     if (statusBadge) {
       statusBadge.className = "status-badge";
 
       const badgeText = statusBadge.querySelector(".badge-text");
-
-      if (badgeText) {
-        badgeText.textContent = "-";
-      }
+      if (badgeText) badgeText.textContent = "-";
     }
 
-    const valKategori = document.getElementById("valKategori");
-    if (valKategori) {
-      valKategori.textContent = "-";
-    }
-
-    const valSkor = document.getElementById("valSkor");
-    if (valSkor) {
-      valSkor.textContent = "-";
-    }
+    if (valKategori) valKategori.textContent = "-";
+    if (valSkor) valSkor.textContent = "-";
 
     return;
   }
 
   // Update gauge
-  if (gaugeFill && gaugeValue) {
+  if (gaugeFill) {
     const maxArc = 251;
     const percentage = Math.max(0, Math.min(skor, 100)) / 100;
     const arcLength = maxArc * percentage;
 
     gaugeFill.style.strokeDasharray = `${arcLength}, 251`;
+  }
+
+  if (gaugeValue) {
     animateValue(gaugeValue, 0, skor);
   }
 
-  // Update status badge
-  const statusBadge = document.getElementById("statusBadge");
-
+  // Update badge kategori
   if (statusBadge) {
     statusBadge.className = "status-badge";
 
-    if (kategori) {
-      statusBadge.classList.add(kategori.toLowerCase());
-    }
-
     const badgeText = statusBadge.querySelector(".badge-text");
 
-    if (badgeText) {
-      badgeText.textContent = kategori || "-";
+    if (status && badgeText) {
+      statusBadge.classList.add(status.className);
+      badgeText.textContent = status.label;
+    } else if (badgeText) {
+      badgeText.textContent = kategoriRaw || "-";
     }
   }
 
-  // Update details
-  const valKategori = document.getElementById("valKategori");
-
   if (valKategori) {
-    valKategori.textContent = kategori || "-";
+    valKategori.textContent = status
+      ? status.label
+      : kategoriRaw || "-";
   }
-
-  const valSkor = document.getElementById("valSkor");
 
   if (valSkor) {
-    valSkor.textContent = skor + "/100";
+    valSkor.textContent = `${skor}/100`;
   }
 }
+
 
 // ===================================
 // CHARTS
@@ -680,8 +711,8 @@ function updateQualityCircles(data) {
       id: "circlePm25",
       valId: "circleValPm25",
       value: parseFloat(data.pm25),
-      max: 100,
-      unit: "",
+      max: 150,
+      unit: " µg/m³",
     },
   ];
 
@@ -700,67 +731,125 @@ function updateQualityCircles(data) {
 // ===================================
 // RECOMMENDATIONS
 // ===================================
+
+
 function updateRecommendations(data) {
   const container = document.getElementById("recommendationGrid");
   if (!container) return;
 
-  const suhu = parseFloat(data.suhu);
-  const rh = parseFloat(data.rh);
-  const soil = parseFloat(data.soil);
-  const pm25 = parseFloat(data.pm25);
+  const kategoriRaw = String(data.kategori ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]/g, "");
 
-  const recommendations = [
-    {
+  const soil = Number(data.soil);
+  const pm25 = Number(data.pm25);
+
+  const sensorValid = (value) => Number.isFinite(value);
+
+  const rekomendasiKategori = {
+    sangatburuk: {
+      title: "Kondisi Lingkungan Sangat Buruk",
+      desc: "Periksa kondisi lingkungan dan validitas pembacaan sensor. Identifikasi parameter yang bermasalah, evaluasi kondisi tanah dan vegetasi, serta periksa kemungkinan sumber pencemaran udara untuk menentukan tindakan perbaikan yang sesuai.",
+      icon: "warning",
+    },
+
+    buruk: {
+      title: "Kondisi Lingkungan Buruk",
+      desc: "Identifikasi parameter lingkungan yang kurang optimal. Periksa kesehatan tanaman dan kelembapan tanah, lakukan penyiraman sesuai kebutuhan tanaman, serta evaluasi kemungkinan sumber pencemaran udara.",
+      icon: "warning",
+    },
+
+    kurangbaik: {
+      title: "Kondisi Lingkungan Buruk",
+      desc: "Identifikasi parameter lingkungan yang kurang optimal. Periksa kesehatan tanaman dan kelembapan tanah, lakukan penyiraman sesuai kebutuhan tanaman, serta evaluasi kemungkinan sumber pencemaran udara.",
+      icon: "warning",
+    },
+
+    cukup: {
+      title: "Kondisi Lingkungan Cukup",
+      desc: "Lanjutkan pemeliharaan rutin. Perhatikan parameter yang belum optimal, sesuaikan penyiraman dengan kebutuhan tanaman, dan pantau perubahan kualitas udara.",
       icon: "success",
-      title: "Monitoring Rutin",
-      desc: "Lanjutkan pemantauan parameter lingkungan secara berkala",
     },
-    {
-      icon: soil < 40 ? "warning" : "success",
-      title: soil < 40 ? "Diperlukan Penyiraman" : "Kelembaban Tanah Cukup",
-      desc:
-        soil < 40
-          ? "Tingkatkan frekuensi penyiraman tanaman"
-          : "Tidak diperlukan penyiraman tambahan",
+
+    baik: {
+      title: "Kondisi Lingkungan Baik",
+      desc: "Pertahankan kondisi lingkungan melalui pemeliharaan vegetasi, pemantauan kelembapan tanah, dan pemeriksaan parameter lingkungan secara berkala.",
+      icon: "success",
     },
-    {
-      icon: pm25 > 35 ? "warning" : "success",
-      title: pm25 > 35 ? "Kualitas Udara Menurun" : "Kualitas Udara Aman",
-      desc:
-        pm25 > 35
-          ? "Pertimbangkan pengurangan aktivitas di area ini"
-          : "Kualitas udara masih dalam batas aman",
+
+    sangatbaik: {
+      title: "Kondisi Lingkungan Sangat Baik",
+      desc: "Pertahankan kondisi lingkungan melalui perawatan vegetasi dan pemantauan sensor secara berkala.",
+      icon: "success",
     },
-    {
-      icon: suhu > 35 ? "warning" : "success",
-      title: suhu > 35 ? "Suhu Tinggi" : "Suhu Normal",
-      desc:
-        suhu > 35
-          ? "Aktifkan sistem pendingin tambahan"
-          : "Tidak diperlukan tindakan korektif",
-    },
-  ];
+  };
+
+  const rekomendasi = rekomendasiKategori[kategoriRaw];
+
+  if (!rekomendasi) {
+    container.innerHTML = `
+      <div class="recommendation-card">
+        <div class="rec-content">
+          <h4>Rekomendasi Belum Tersedia</h4>
+          <p>
+            Kategori output fuzzy belum tersedia atau tidak dikenali.
+            Periksa data hasil pemrosesan fuzzy dari server.
+          </p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const recommendations = [rekomendasi];
+
+  // Informasi tambahan kelembapan tanah
+  // if (sensorValid(soil) && soil >= 0 && soil <= 35) {
+  //   recommendations.push({
+  //     title: "Periksa Kelembapan Tanah",
+  //     desc: "Nilai kelembapan tanah berada pada rentang yang mengindikasikan kondisi kering dalam fungsi keanggotaan fuzzy. Periksa kondisi tanah dan kebutuhan air tanaman sebelum menyiram.",
+  //     icon: "warning",
+  //   });
+  // }
+
+  // Informasi tambahan PM2.5
+  // if (sensorValid(pm25) && pm25 >= 45 && pm25 <= 150) {
+  //   recommendations.push({
+  //     title: "Perhatian pada PM2.5",
+  //     desc: "Nilai PM2.5 berada pada rentang fungsi keanggotaan TidakSehat atau lebih tinggi. Pantau kualitas udara dan evaluasi kemungkinan sumber pencemaran.",
+  //     icon: "warning",
+  //   });
+  // }
 
   container.innerHTML = recommendations
-    .map(
-      (rec) => `
-        <div class="recommendation-card">
-            <div class="rec-icon ${rec.icon}">
-                ${
-                  rec.icon === "success"
-                    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>'
-                    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-                }
-            </div>
-            <div class="rec-content">
-                <h4>${rec.title}</h4>
-                <p>${rec.desc}</p>
-            </div>
+    .map((rec) => `
+      <div class="recommendation-card">
+        <div class="rec-icon ${rec.icon}">
+          ${
+            rec.icon === "success"
+              ? `<svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>`
+              : `<svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17.01"/>
+                </svg>`
+          }
         </div>
-    `,
-    )
+        <div class="rec-content">
+          <h4>${rec.title}</h4>
+          <p>${rec.desc}</p>
+        </div>
+      </div>
+    `)
     .join("");
 }
+
+
 
 // ===================================
 // EVENT LISTENERS
