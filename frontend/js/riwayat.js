@@ -70,7 +70,8 @@ async function fetchRiwayatData(periode) {
   try {
     showLoading(true);
 
-    const baseUrl = "http://192.168.88.99:1880/api/history";
+    const baseUrl = "http://localhost:1880/api/history";
+    //const baseUrl = "http://192.168.88.99:1880/api/history";
 
     const urls = [
       `${baseUrl}?sensor=temperature&period=${periode}`,

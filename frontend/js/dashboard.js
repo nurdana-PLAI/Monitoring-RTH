@@ -127,11 +127,13 @@ async function loadRealtimeData() {
     console.log("Sensor yang dipilih:", sensor);
 
     const [latestResponse, historyResponse] = await Promise.all([
-      fetch("http://192.168.88.99:1880/api/latest", {
+      fetch("http://localhost:1880/api/latest", {
+      //fetch("http://192.168.88.99:1880/api/latest", {
         cache: "no-store",
       }),
 
-      fetch(`http://192.168.88.99:1880/api/history?sensor=${sensor}`, {
+      fetch(`http://localhost:1880/api/history?sensor=${sensor}`, {
+      //fetch(`http://192.168.88.99:1880/api/history?sensor=${sensor}`, {
         cache: "no-store",
       }),
     ]);

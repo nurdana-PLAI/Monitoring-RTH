@@ -36,6 +36,21 @@ class SensorPayloadAdapter:
 
         return values_by_type
 
+    def extract_microclimate_inputs(self, payload: dict) -> dict[str, float]:
+        engine_inputs = self.extract_engine_inputs(payload)
+        return {
+            "SuhuUdara": engine_inputs["SuhuUdara"],
+            "KelUdara": engine_inputs["KelUdara"],
+            "KelTanah": engine_inputs["KelTanah"],
+        }
+
+    def extract_final_inputs(self, payload: dict, indeks_mikro: float) -> dict[str, float]:
+        engine_inputs = self.extract_engine_inputs(payload)
+        return {
+            "IndeksMikro": float(indeks_mikro),
+            "PM25": engine_inputs["PM25"],
+        }
+
     def enrich_payload(self, payload: dict, ikl: float, label: str) -> dict:
         enriched = deepcopy(payload)
         fuzzy_block = enriched.get("fuzzy")
