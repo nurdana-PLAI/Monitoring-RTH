@@ -9,8 +9,8 @@ from src.utils.logging_config import configure_logging
 def main() -> None:
     configure_logging()
     engine = HierarchicalFISEngine(
-        Path("RTH_Mikroklimat.fis"),
-        Path("RTH_IKL_Final.fis"),
+        Path("RTH_FIS-1.fis"),
+        Path("RTH_FIS-2.fis"),
     )
     service = MQTTService(engine=engine, config=MQTTConfig.from_env())
     service.run_forever()

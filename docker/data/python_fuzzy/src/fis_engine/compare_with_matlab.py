@@ -11,8 +11,8 @@ from src.fis_engine.engine import HierarchicalFISEngine
 
 def main() -> None:
     engine = HierarchicalFISEngine(
-        PROJECT_ROOT / "RTH_Mikroklimat.fis",
-        PROJECT_ROOT / "RTH_IKL_Final.fis",
+        PROJECT_ROOT / "RTH_FIS-1.fis",
+        PROJECT_ROOT / "RTH_FIS-2.fis",
     )
 
     samples = [

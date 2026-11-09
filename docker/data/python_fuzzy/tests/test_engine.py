@@ -4,8 +4,8 @@ from src.fis_engine.engine import FISEngine, HierarchicalFISEngine
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-MICRO_FIS_PATH = BASE_DIR / "RTH_Mikroklimat.fis"
-FINAL_FIS_PATH = BASE_DIR / "RTH_IKL_Final.fis"
+MICRO_FIS_PATH = BASE_DIR / "RTH_FIS-1.fis"
+FINAL_FIS_PATH = BASE_DIR / "RTH_FIS-2.fis"
 
 
 def test_microclimate_engine_evaluate_returns_crisp_output() -> None:

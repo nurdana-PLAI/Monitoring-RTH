@@ -5,8 +5,8 @@ from src.fis_engine.parser import FISParser
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-MICRO_FIS_PATH = BASE_DIR / "RTH_Mikroklimat.fis"
-FINAL_FIS_PATH = BASE_DIR / "RTH_IKL_Final.fis"
+MICRO_FIS_PATH = BASE_DIR / "RTH_FIS-1.fis"
+FINAL_FIS_PATH = BASE_DIR / "RTH_FIS-2.fis"
 
 
 def test_parser_reads_microclimate_system_metadata() -> None:

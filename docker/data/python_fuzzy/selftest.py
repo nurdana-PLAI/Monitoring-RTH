@@ -8,8 +8,8 @@ from src.mqtt_service.payloads import SensorPayloadAdapter
 
 
 BASE_DIR = Path(__file__).resolve().parent
-MICRO_FIS_PATH = BASE_DIR / "RTH_Mikroklimat.fis"
-FINAL_FIS_PATH = BASE_DIR / "RTH_IKL_Final.fis"
+MICRO_FIS_PATH = BASE_DIR / "RTH_FIS-1.fis"
+FINAL_FIS_PATH = BASE_DIR / "RTH_FIS-2.fis"
 
 
 def test_parser() -> None:
