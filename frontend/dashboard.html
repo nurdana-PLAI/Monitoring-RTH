@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 <html lang="id">
   <head>
@@ -10,30 +11,30 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+
     <!-- Google Fonts -->
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+
     <!-- Leaflet CSS -->
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css" />
   </head>
+
   <body>
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="logo-icon">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
+          <svg viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
             <path d="M12 2L2 7l10 5 10-5-10-5z" />
             <path d="M2 17l10 5 10-5" />
             <path d="M2 12l10 5 10-5" />
@@ -45,12 +46,8 @@
       <ul class="nav-menu">
         <li class="nav-item active">
           <a href="dashboard.html" class="nav-link">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
+            <svg viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="7" height="7" />
               <rect x="14" y="3" width="7" height="7" />
               <rect x="14" y="14" width="7" height="7" />
@@ -59,14 +56,11 @@
             <span>Dashboard</span>
           </a>
         </li>
+
         <li class="nav-item">
           <a href="riwayat.html" class="nav-link">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
+            <svg viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
@@ -85,15 +79,12 @@
 
     <!-- Main Content -->
     <main class="main-content">
+
       <!-- Header -->
       <header class="top-header">
         <button class="menu-toggle" id="menuToggle">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
+          <svg viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
             <line x1="3" y1="12" x2="21" y2="12" />
             <line x1="3" y1="6" x2="21" y2="6" />
             <line x1="3" y1="18" x2="21" y2="18" />
@@ -110,13 +101,10 @@
             <span class="date"></span>
             <span class="time"></span>
           </div>
+
           <button class="btn-refresh" id="btnRefresh" title="Refresh Data">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
+            <svg viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
             </svg>
@@ -126,35 +114,32 @@
 
       <!-- Dashboard Content -->
       <div class="dashboard-content">
-        <!-- Hero Summary Section -->
+
+        <!-- ================================= -->
+        <!-- SENSOR SUMMARY -->
+        <!-- ================================= -->
         <section class="section-hero">
-          <div class="row g-4">
+          <div class="row g-3">
+
+            <!-- Suhu -->
             <div class="col-12 col-sm-6 col-xl-3">
               <div class="indicator-card" data-indicator="suhu">
                 <div class="card-icon">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path
-                      d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"
-                    />
+                  <svg viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" />
                   </svg>
                 </div>
+
                 <div class="card-content">
                   <span class="card-label">Suhu Udara</span>
                   <span class="card-value" id="valSuhu">--</span>
                   <span class="card-unit">°C</span>
                 </div>
+
                 <div class="card-trend trend-up">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
+                  <svg viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
                     <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                     <polyline points="17 6 23 6 23 12" />
                   </svg>
@@ -163,30 +148,25 @@
               </div>
             </div>
 
+            <!-- Kelembapan Udara -->
             <div class="col-12 col-sm-6 col-xl-3">
               <div class="indicator-card" data-indicator="rh">
                 <div class="card-icon">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
+                  <svg viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
                     <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
                   </svg>
                 </div>
+
                 <div class="card-content">
-                  <span class="card-label">Kelembaban Udara</span>
+                  <span class="card-label">Kelembapan Udara</span>
                   <span class="card-value" id="valRh">--</span>
                   <span class="card-unit">%</span>
                 </div>
+
                 <div class="card-trend trend-stable">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
+                  <svg viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
                     <line x1="5" y1="12" x2="19" y2="12" />
                   </svg>
                   <span>Stabil</span>
@@ -194,30 +174,25 @@
               </div>
             </div>
 
+            <!-- Kelembapan Tanah -->
             <div class="col-12 col-sm-6 col-xl-3">
               <div class="indicator-card" data-indicator="soil">
                 <div class="card-icon">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
+                  <svg viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   </svg>
                 </div>
+
                 <div class="card-content">
-                  <span class="card-label">Kelembaban Tanah</span>
+                  <span class="card-label">Kelembapan Tanah</span>
                   <span class="card-value" id="valSoil">--</span>
                   <span class="card-unit">%</span>
                 </div>
+
                 <div class="card-trend trend-down">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
+                  <svg viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
                     <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
                     <polyline points="17 18 23 18 23 12" />
                   </svg>
@@ -226,56 +201,60 @@
               </div>
             </div>
 
+            <!-- PM2.5 -->
             <div class="col-12 col-sm-6 col-xl-3">
               <div class="indicator-card" data-indicator="pm25">
                 <div class="card-icon">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
+                  <svg viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10" />
                     <path d="M8 12h8" />
                     <path d="M12 8v8" />
                   </svg>
                 </div>
+
                 <div class="card-content">
                   <span class="card-label">PM2.5</span>
                   <span class="card-value" id="valPm25">--</span>
                   <span class="card-unit">µg/m³</span>
                 </div>
+
                 <div class="card-trend trend-good">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
+                  <svg viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                   <span>Baik</span>
                 </div>
               </div>
             </div>
+
           </div>
         </section>
 
-        <!-- Status & Charts Row -->
+        <!-- ================================= -->
+        <!-- STATUS LINGKUNGAN & RATA-RATA IKL -->
+        <!-- ================================= -->
         <div class="row g-4 mt-0">
+
           <!-- Status Lingkungan -->
-          <div class="col-12 col-lg-4">
+          <div class="col-12 col-lg-6">
             <div class="panel status-panel">
+
               <div class="panel-header">
                 <h3>Status Lingkungan</h3>
-                <span class="last-update" id="lastUpdate"
-                  >Terakhir diperbarui: --</span
-                >
+
+                <span class="last-update" id="lastUpdate">
+                  Terakhir diperbarui: --
+                </span>
               </div>
+
               <div class="panel-body">
+
                 <div class="status-display">
                   <div class="gauge-container">
                     <svg class="gauge-svg" viewBox="0 0 200 120">
+
                       <defs>
                         <linearGradient
                           id="gaugeGradient"
@@ -289,181 +268,160 @@
                           <stop offset="100%" style="stop-color: #10b981" />
                         </linearGradient>
                       </defs>
+
                       <path
                         class="gauge-bg"
                         d="M 20 100 A 80 80 0 0 1 180 100"
                       />
+
                       <path
                         class="gauge-fill"
                         id="gaugeFill"
                         d="M 20 100 A 80 80 0 0 1 180 100"
                       />
-                      <text class="gauge-value" id="gaugeValue" x="100" y="90">
+
+                      <text
+                        class="gauge-value"
+                        id="gaugeValue"
+                        x="100"
+                        y="90"
+                      >
                         --
                       </text>
-                      <text class="gauge-label" x="100" y="110">/ 100</text>
+
+                      <text class="gauge-label" x="100" y="110">
+                        / 100
+                      </text>
                     </svg>
                   </div>
+
                   <div class="status-badge" id="statusBadge">
                     <span class="badge-text">--</span>
                   </div>
                 </div>
+
                 <div class="status-details">
                   <div class="detail-item">
                     <span class="detail-label">Kategori</span>
                     <span class="detail-value" id="valKategori">--</span>
                   </div>
+
                   <div class="detail-item">
                     <span class="detail-label">Skor</span>
                     <span class="detail-value" id="valSkor">--</span>
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
 
-          <!-- Grafik Monitoring -->
-          <div class="col-12 col-lg-8">
+          <!-- Rata-rata IKL 24 Jam -->
+          <div class="col-12 col-lg-6">
+            <div class="panel average-panel">
+
+              <div class="panel-header">
+                <h3>Rata-rata IKL 24 Jam</h3>
+              </div>
+
+              <div class="panel-body">
+                <div class="indicator-card" data-indicator="average">
+
+                  <div class="card-icon">
+                    <svg viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2">
+                      <path d="M3 3v18h18" />
+                      <path d="m19 9-5 5-4-4-5 5" />
+                    </svg>
+                  </div>
+
+                  <div class="card-content">
+                    <span class="card-label">Skor Rata-rata</span>
+                    <span class="card-value" id="valAverage">--</span>
+                    <span class="card-unit">/ 100</span>
+                    <small id="averageCount">0 data</small>
+                  </div>
+
+                  <div class="card-trend trend-good">
+                    <span id="averageCategory">--</span>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================================= -->
+        <!-- GRAFIK MONITORING 24 JAM -->
+        <!-- FULL WIDTH -->
+        <!-- ================================= -->
+        <div class="row g-4 mt-0">
+          <div class="col-12">
             <div class="panel chart-panel">
+
               <div class="panel-header">
                 <h3>Grafik Monitoring 24 Jam</h3>
+
                 <div class="chart-tabs">
                   <button class="chart-tab active" data-chart="suhu">
                     Suhu
                   </button>
-                  <button class="chart-tab" data-chart="rh">RH</button>
-                  <button class="chart-tab" data-chart="soil">Tanah</button>
-                  <button class="chart-tab" data-chart="pm25">PM2.5</button>
+
+                  <button class="chart-tab" data-chart="rh">
+                    RH
+                  </button>
+
+                  <button class="chart-tab" data-chart="soil">
+                    Tanah
+                  </button>
+
+                  <button class="chart-tab" data-chart="pm25">
+                    PM2.5
+                  </button>
                 </div>
               </div>
+
               <div class="panel-body">
                 <div class="chart-container">
                   <canvas id="monitoringChart"></canvas>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
 
-        <!-- Map & Quality Row -->
+
         <div class="row g-4 mt-0">
-          <!-- Lokasi Node IoT -->
-          <div class="col-12 col-lg-6">
-            <div class="panel map-panel">
-              <div class="panel-header">
-                <h3>Lokasi Node IoT</h3>
-                <div class="node-legend">
-                  <span class="legend-item active">Aktif</span>
-                  <span class="legend-item inactive">Tidak Aktif</span>
+            <!-- Lokasi Node IoT -->
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">Lokasi Node IoT</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="map" style="height: 350px; width: 100%;"></div>
+                    </div>
                 </div>
-              </div>
-              <div class="panel-body p-0">
-                <div id="map" class="map-container"></div>
-              </div>
             </div>
-          </div>
 
-          <!-- Indikator Kualitas -->
-          <div class="col-12 col-lg-6">
-            <div class="panel quality-panel">
-              <div class="panel-header">
-                <h3>Indikator Kualitas Lingkungan</h3>
-              </div>
-              <div class="panel-body">
-                <div class="quality-grid">
-                  <div class="quality-item">
-                    <div class="quality-circle" data-quality="excellent">
-                      <svg viewBox="0 0 36 36">
-                        <path
-                          class="circle-bg"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          class="circle-fill"
-                          id="circleSuhu"
-                          stroke-dasharray="0, 100"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                      <span class="circle-value" id="circleValSuhu">--</span>
+            <!-- Rekomendasi Tindakan -->
+            <div class="col-lg-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">Rekomendasi Tindakan</h5>
                     </div>
-                    <span class="quality-label">Suhu</span>
-                  </div>
-                  <div class="quality-item">
-                    <div class="quality-circle" data-quality="good">
-                      <svg viewBox="0 0 36 36">
-                        <path
-                          class="circle-bg"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          class="circle-fill"
-                          id="circleRh"
-                          stroke-dasharray="0, 100"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                      <span class="circle-value" id="circleValRh">--</span>
+                    <div class="card-body">
+                        <div id="recommendationGrid"></div>
                     </div>
-                    <span class="quality-label">Kelembaban</span>
-                  </div>
-                  <div class="quality-item">
-                    <div class="quality-circle" data-quality="good">
-                      <svg viewBox="0 0 36 36">
-                        <path
-                          class="circle-bg"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          class="circle-fill"
-                          id="circleSoil"
-                          stroke-dasharray="0, 100"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                      <span class="circle-value" id="circleValSoil">--</span>
-                    </div>
-                    <span class="quality-label">Tanah</span>
-                  </div>
-                  <div class="quality-item">
-                    <div class="quality-circle" data-quality="excellent">
-                      <svg viewBox="0 0 36 36">
-                        <path
-                          class="circle-bg"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          class="circle-fill"
-                          id="circlePm25"
-                          stroke-dasharray="0, 100"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                      </svg>
-                      <span class="circle-value" id="circleValPm25">--</span>
-                    </div>
-                    <span class="quality-label">PM2.5</span>
-                  </div>
                 </div>
-              </div>
             </div>
-          </div>
         </div>
 
-        <!-- Rekomendasi Section -->
-        <div class="row g-4 mt-0">
-          <div class="col-12">
-            <div class="panel recommendation-panel">
-              <div class="panel-header">
-                <h3>Rekomendasi Tindakan</h3>
-              </div>
-              <div class="panel-body">
-                <div class="recommendation-grid" id="recommendationGrid">
-                  <!-- Recommendations will be populated by JS -->
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+
       </div>
     </main>
 
@@ -480,5 +438,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/dashboard.js"></script>
+
   </body>
 </html>
+```

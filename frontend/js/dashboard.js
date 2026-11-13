@@ -1,3 +1,4 @@
+
 /**
  * Dashboard JavaScript
  * Sistem Monitoring Lingkungan RTH
@@ -10,6 +11,8 @@ let monitoringChart = null;
 let map = null;
 let currentChartData = "suhu";
 let realtimeData = [];
+let latestSensorData = null;
+let iklHistoryData = [];
 
 // Node IoT Locations
 const iotNodes = [
@@ -33,23 +36,17 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function initializeApp() {
-  // Show loading
   showLoading(true);
 
-  // Initialize components
   initSidebar();
   initDateTime();
   initCharts();
   initMap();
   initEventListeners();
 
-  // Load data
   loadRealtimeData();
 
-  // Update datetime every second
   setInterval(updateDateTime, 1000);
-
-  // Auto refresh data every 30 seconds
   setInterval(loadRealtimeData, 30000);
 }
 
@@ -65,7 +62,6 @@ function initSidebar() {
       sidebar.classList.toggle("active");
     });
 
-    // Close sidebar when clicking outside
     document.addEventListener("click", function (e) {
       if (window.innerWidth <= 992) {
         if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
@@ -97,6 +93,7 @@ function updateDateTime() {
     month: "long",
     day: "numeric",
   };
+
   if (dateEl) {
     dateEl.textContent = now.toLocaleDateString("id-ID", options);
   }
@@ -126,20 +123,28 @@ async function loadRealtimeData() {
 
     console.log("Sensor yang dipilih:", sensor);
 
+    // Ambil data latest dan history sensor
     const [latestResponse, historyResponse] = await Promise.all([
-      // fetch("http://localhost:1880/api/latest", {
       fetch("http://172.16.10.93:1880/api/latest", {
         cache: "no-store",
       }),
 
-      // fetch(`http://localhost:1880/api/history?sensor=${sensor}`, {
-      fetch(`http://172.16.10.93:1880/api/history?sensor=${sensor}`, {
-        cache: "no-store",
-      }),
+      fetch(
+        `http://172.16.10.93:1880/api/history?sensor=${sensor}`,
+        { cache: "no-store" }
+      ),
     ]);
 
     console.log("Latest status:", latestResponse.status);
     console.log("History status:", historyResponse.status);
+
+    if (!latestResponse.ok) {
+      throw new Error("Gagal mengambil data latest");
+    }
+
+    if (!historyResponse.ok) {
+      throw new Error("Gagal mengambil history sensor");
+    }
 
     const latest = await latestResponse.json();
     const history = await historyResponse.json();
@@ -158,37 +163,115 @@ async function loadRealtimeData() {
       throw new Error("History bukan array");
     }
 
-    // Simpan latest secara terpisah
+    // Simpan data latest
     latestSensorData = latest;
 
-    // History hanya untuk grafik
+   // History sensor untuk grafik
     realtimeData = history.map((item) => ({
       timestamp: item.timestamp,
       value: Number(item.value),
     }));
 
+    // History IKL untuk perhitungan rata-rata
+    iklHistoryData = history
+      .filter((item) => item.ikl !== null && item.ikl !== undefined)
+      .map((item) => ({
+        timestamp: item.timestamp,
+        value: Number(item.ikl),
+      }));
+
     console.log("REALTIME DATA:");
     console.table(realtimeData);
 
-    // Update dashboard
     updateDashboard();
 
     showLoading(false);
+
   } catch (error) {
     console.error("ERROR DASHBOARD:", error);
 
     realtimeData = [];
     latestSensorData = null;
+    iklHistoryData = [];
 
     showEmptyDashboard();
     showLoading(false);
   }
 }
 
+// ===================================
+// AVERAGE IKL 24 HOURS
+// ===================================
+function calculateAverageIKL(data) {
+  const now = Date.now();
+  const last24Hours = now - 24 * 60 * 60 * 1000;
+
+  const filteredData = data.filter((item) => {
+    const timestamp = new Date(item.timestamp).getTime();
+    const value = Number(item.value);
+
+    return (
+      Number.isFinite(timestamp) &&
+      timestamp >= last24Hours &&
+      timestamp <= now &&
+      item.value !== null &&
+      item.value !== undefined &&
+      item.value !== "" &&
+      Number.isFinite(value)
+    );
+  });
+
+  if (filteredData.length === 0) {
+    return {
+      average: null,
+      count: 0,
+    };
+  }
+
+  const total = filteredData.reduce(
+    (sum, item) => sum + Number(item.value),
+    0
+  );
+
+  return {
+    average: total / filteredData.length,
+    count: filteredData.length,
+  };
+}
+
+function updateAverageIKL() {
+  const result = calculateAverageIKL(iklHistoryData);
+
+  const averageElement = document.getElementById("valAverage");
+  const categoryElement = document.getElementById("averageCategory");
+  const countElement = document.getElementById("averageCount");
+
+  if (averageElement) {
+    averageElement.textContent =
+      result.average === null
+        ? "-"
+        : result.average.toFixed(1);
+  }
+
+  if (categoryElement) {
+    categoryElement.textContent =
+      result.average === null
+        ? "Data tidak tersedia"
+        : "Rata-rata 24 jam";
+  }
+
+  if (countElement) {
+    countElement.textContent = `${result.count} data`;
+  }
+
+  console.log("RATA-RATA IKL 24 JAM:");
+  console.log(result);
+}
+
+// ===================================
+// EMPTY DASHBOARD
+// ===================================
 function showEmptyDashboard() {
-  // ================================
-  // NILAI SENSOR
-  // ================================
   const sensorElements = [
     "valSuhu",
     "valRh",
@@ -200,6 +283,9 @@ function showEmptyDashboard() {
     "circleValRh",
     "circleValSoil",
     "circleValPm25",
+    "valAverage",
+    "averageCategory",
+    "averageCount",
   ];
 
   sensorElements.forEach((id) => {
@@ -209,9 +295,6 @@ function showEmptyDashboard() {
     }
   });
 
-  // ================================
-  // STATUS BADGE
-  // ================================
   const statusBadge = document.getElementById("statusBadge");
 
   if (statusBadge) {
@@ -224,9 +307,6 @@ function showEmptyDashboard() {
     }
   }
 
-  // ================================
-  // GAUGE
-  // ================================
   const gaugeFill = document.getElementById("gaugeFill");
   const gaugeValue = document.getElementById("gaugeValue");
 
@@ -238,10 +318,12 @@ function showEmptyDashboard() {
     gaugeValue.textContent = "-";
   }
 
-  // ================================
-  // QUALITY CIRCLES
-  // ================================
-  const circles = ["circleSuhu", "circleRh", "circleSoil", "circlePm25"];
+  const circles = [
+    "circleSuhu",
+    "circleRh",
+    "circleSoil",
+    "circlePm25",
+  ];
 
   circles.forEach((id) => {
     const circle = document.getElementById(id);
@@ -251,19 +333,12 @@ function showEmptyDashboard() {
     }
   });
 
-  // ================================
-  // CHART
-  // ================================
   if (monitoringChart) {
     monitoringChart.data.labels = [];
     monitoringChart.data.datasets[0].data = [];
-
     monitoringChart.update();
   }
 
-  // ================================
-  // RECOMMENDATION
-  // ================================
   const recommendationGrid = document.getElementById("recommendationGrid");
 
   if (recommendationGrid) {
@@ -277,9 +352,6 @@ function showEmptyDashboard() {
     `;
   }
 
-  // ================================
-  // LAST UPDATE
-  // ================================
   const lastUpdate = document.getElementById("lastUpdate");
 
   if (lastUpdate) {
@@ -287,6 +359,9 @@ function showEmptyDashboard() {
   }
 }
 
+// ===================================
+// CSV PARSER
+// ===================================
 function parseCSV(csvText) {
   const lines = csvText.trim().split("\n");
   const headers = lines[0].split(",").map((h) => h.trim());
@@ -295,9 +370,11 @@ function parseCSV(csvText) {
   for (let i = 1; i < lines.length; i++) {
     const values = lines[i].split(",").map((v) => v.trim());
     const row = {};
+
     headers.forEach((header, index) => {
       row[header] = values[index];
     });
+
     data.push(row);
   }
 
@@ -329,10 +406,13 @@ function updateDashboard() {
   updateValue("valSoil", latest.soil);
   updateValue("valPm25", latest.pm25);
 
-  // IKL
+  // IKL terbaru
   updateStatus(latest);
 
-  // Grafik history
+  // Rata-rata IKL 24 jam
+  updateAverageIKL();
+
+  // Grafik history sensor
   updateChart(realtimeData);
 
   // Lingkaran
@@ -353,12 +433,22 @@ function updateDashboard() {
 
 function updateValue(elementId, value) {
   const el = document.getElementById(elementId);
+
   if (el) {
-    animateValue(el, parseFloat(el.textContent) || 0, parseFloat(value));
+    animateValue(
+      el,
+      parseFloat(el.textContent) || 0,
+      parseFloat(value)
+    );
   }
 }
 
 function animateValue(element, start, end) {
+  if (!Number.isFinite(end)) {
+    element.textContent = "-";
+    return;
+  }
+
   const duration = 1000;
   const startTime = performance.now();
 
@@ -366,11 +456,12 @@ function animateValue(element, start, end) {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
 
-    // Easing function
     const easeOutQuart = 1 - Math.pow(1 - progress, 4);
     const current = start + (end - start) * easeOutQuart;
 
-    element.textContent = current.toFixed(end % 1 === 0 ? 0 : 1);
+    element.textContent = current.toFixed(
+      end % 1 === 0 ? 0 : 1
+    );
 
     if (progress < 1) {
       requestAnimationFrame(update);
@@ -383,7 +474,6 @@ function animateValue(element, start, end) {
 // ===================================
 // STATUS UPDATE
 // ===================================
-
 function updateStatus(data) {
   const skor = parseFloat(data.skor);
   const kategoriRaw = String(data.kategori ?? "").trim();
@@ -435,7 +525,6 @@ function updateStatus(data) {
 
   const status = kategoriMap[kategoriRaw];
 
-  // Skor tidak tersedia
   if (!Number.isFinite(skor)) {
     if (gaugeFill) {
       gaugeFill.style.strokeDasharray = "0, 251";
@@ -449,6 +538,7 @@ function updateStatus(data) {
       statusBadge.className = "status-badge";
 
       const badgeText = statusBadge.querySelector(".badge-text");
+
       if (badgeText) badgeText.textContent = "-";
     }
 
@@ -458,7 +548,6 @@ function updateStatus(data) {
     return;
   }
 
-  // Update gauge
   if (gaugeFill) {
     const maxArc = 251;
     const percentage = Math.max(0, Math.min(skor, 100)) / 100;
@@ -471,7 +560,6 @@ function updateStatus(data) {
     animateValue(gaugeValue, 0, skor);
   }
 
-  // Update badge kategori
   if (statusBadge) {
     statusBadge.className = "status-badge";
 
@@ -495,7 +583,6 @@ function updateStatus(data) {
     valSkor.textContent = `${skor}/100`;
   }
 }
-
 
 // ===================================
 // CHARTS
@@ -643,19 +730,16 @@ function initMap() {
   const mapContainer = document.getElementById("map");
   if (!mapContainer) return;
 
-  // Initialize map
   map = L.map("map", {
     center: [-7.7870215, 110.3880785],
     zoom: 17,
     zoomControl: true,
   });
 
-  // Add tile layer
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap contributors",
   }).addTo(map);
 
-  // Add markers
   iotNodes.forEach((node) => {
     const marker = L.circleMarker([node.lat, node.lng], {
       radius: 12,
@@ -667,17 +751,17 @@ function initMap() {
     }).addTo(map);
 
     marker.bindPopup(`
-            <div style="font-family: 'DM Sans', sans-serif; padding: 8px;">
-                <strong style="font-size: 14px;">${node.name}</strong><br>
-                <span style="color: ${
-                  node.status === "active" ? "#10b981" : "#94a3b8"
-                }; font-size: 12px;">
-                    Status: ${
-                      node.status === "active" ? "Aktif" : "Tidak Aktif"
-                    }
-                </span>
-            </div>
-        `);
+      <div style="font-family: 'DM Sans', sans-serif; padding: 8px;">
+        <strong style="font-size: 14px;">${node.name}</strong><br>
+        <span style="color: ${
+          node.status === "active" ? "#10b981" : "#94a3b8"
+        }; font-size: 12px;">
+          Status: ${
+            node.status === "active" ? "Aktif" : "Tidak Aktif"
+          }
+        </span>
+      </div>
+    `);
   });
 }
 
@@ -721,7 +805,17 @@ function updateQualityCircles(data) {
     const valueEl = document.getElementById(metric.valId);
 
     if (circle && valueEl) {
-      const percentage = (metric.value / metric.max) * 100;
+      if (!Number.isFinite(metric.value)) {
+        circle.setAttribute("stroke-dasharray", "0, 100");
+        valueEl.textContent = "-";
+        return;
+      }
+
+      const percentage = Math.max(
+        0,
+        Math.min((metric.value / metric.max) * 100, 100)
+      );
+
       circle.setAttribute("stroke-dasharray", `${percentage}, 100`);
       valueEl.textContent = metric.value.toFixed(0) + metric.unit;
     }
@@ -731,8 +825,6 @@ function updateQualityCircles(data) {
 // ===================================
 // RECOMMENDATIONS
 // ===================================
-
-
 function updateRecommendations(data) {
   const container = document.getElementById("recommendationGrid");
   if (!container) return;
@@ -741,11 +833,6 @@ function updateRecommendations(data) {
     .trim()
     .toLowerCase()
     .replace(/[\s_-]/g, "");
-
-  const soil = Number(data.soil);
-  const pm25 = Number(data.pm25);
-
-  const sensorValid = (value) => Number.isFinite(value);
 
   const rekomendasiKategori = {
     sangatburuk: {
@@ -804,24 +891,6 @@ function updateRecommendations(data) {
 
   const recommendations = [rekomendasi];
 
-  // Informasi tambahan kelembapan tanah
-  // if (sensorValid(soil) && soil >= 0 && soil <= 35) {
-  //   recommendations.push({
-  //     title: "Periksa Kelembapan Tanah",
-  //     desc: "Nilai kelembapan tanah berada pada rentang yang mengindikasikan kondisi kering dalam fungsi keanggotaan fuzzy. Periksa kondisi tanah dan kebutuhan air tanaman sebelum menyiram.",
-  //     icon: "warning",
-  //   });
-  // }
-
-  // Informasi tambahan PM2.5
-  // if (sensorValid(pm25) && pm25 >= 45 && pm25 <= 150) {
-  //   recommendations.push({
-  //     title: "Perhatian pada PM2.5",
-  //     desc: "Nilai PM2.5 berada pada rentang fungsi keanggotaan TidakSehat atau lebih tinggi. Pantau kualitas udara dan evaluasi kemungkinan sumber pencemaran.",
-  //     icon: "warning",
-  //   });
-  // }
-
   container.innerHTML = recommendations
     .map((rec) => `
       <div class="recommendation-card">
@@ -849,32 +918,25 @@ function updateRecommendations(data) {
     .join("");
 }
 
-
-
 // ===================================
 // EVENT LISTENERS
 // ===================================
 function initEventListeners() {
-  // Chart tabs
   const chartTabs = document.querySelectorAll(".chart-tab");
 
   chartTabs.forEach((tab) => {
     tab.addEventListener("click", async function () {
-      // Update active tab
       chartTabs.forEach((t) => t.classList.remove("active"));
       this.classList.add("active");
 
-      // Update chart type
       currentChartData = this.dataset.chart;
 
       console.log("Ganti chart:", currentChartData);
 
-      // Ambil data history sesuai sensor yang dipilih
       await loadRealtimeData();
     });
   });
 
-  // Refresh button
   const btnRefresh = document.getElementById("btnRefresh");
 
   if (btnRefresh) {
@@ -895,6 +957,7 @@ function initEventListeners() {
 // ===================================
 function showLoading(show) {
   const overlay = document.getElementById("loadingOverlay");
+
   if (overlay) {
     if (show) {
       overlay.classList.add("active");
