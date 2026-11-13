@@ -51,17 +51,13 @@ function initSidebar() {
   }
 }
 
-// ===================================
-// DATA LOADING
-// ===================================
-// ===================================
-// DATA LOADING
-// ===================================
+
 // ===================================
 // DATA LOADING
 // ===================================
 async function loadRiwayatData() {
-  const periode = document.getElementById("filterPeriode")?.value || "24h";
+  const periode =
+    document.getElementById("filterPeriode")?.value || "24h";
 
   await fetchRiwayatData(periode);
 }
@@ -70,144 +66,84 @@ async function loadRiwayatData() {
 // FETCH DATA BERDASARKAN PERIODE
 // ===================================
 async function fetchRiwayatData(periode) {
+  const baseUrl = "http://172.16.10.93:1880/api/history";
+
+  const urls = {
+    temperature: `${baseUrl}?sensor=temperature&period=${periode}`,
+    humidity: `${baseUrl}?sensor=humidity&period=${periode}`,
+    soil: `${baseUrl}?sensor=soil_humidity&period=${periode}`,
+    pm25: `${baseUrl}?sensor=pm25&period=${periode}`,
+  };
+
   try {
     showLoading(true);
 
-    // const baseUrl = "http://localhost:1880/api/history";
-    const baseUrl = "http://172.16.10.93:1880/api/history";
-
-    const urls = [
-      `${baseUrl}?sensor=temperature&period=${periode}`,
-      `${baseUrl}?sensor=humidity&period=${periode}`,
-      `${baseUrl}?sensor=soil_humidity&period=${periode}`,
-      `${baseUrl}?sensor=pm25&period=${periode}`,
-    ];
-
     console.log("=== FETCH RIWAYAT ===");
     console.log("Periode:", periode);
-    console.log("Temperature:", urls[0]);
-    console.log("Humidity:", urls[1]);
-    console.log("Soil:", urls[2]);
-    console.log("PM2.5:", urls[3]);
+    console.log("URL:", urls);
 
-    const [tempRes, humRes, soilRes, pmRes] = await Promise.all(
-      urls.map((url) =>
-        fetch(url, {
+    const responses = await Promise.all(
+      Object.entries(urls).map(async ([sensor, url]) => {
+        const response = await fetch(url, {
           cache: "no-store",
-        }),
-      ),
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Gagal mengambil ${sensor}: HTTP ${response.status}`
+          );
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error(`Format data ${sensor} bukan array`);
+        }
+
+        console.log(`Data ${sensor}:`, data);
+
+        return data;
+      })
     );
 
-    console.log("Status:");
-    console.log("Temperature:", tempRes.status);
-    console.log("Humidity:", humRes.status);
-    console.log("Soil:", soilRes.status);
-    console.log("PM2.5:", pmRes.status);
+    const [temperature, humidity, soil, pm25] = responses;
 
-    if (!tempRes.ok || !humRes.ok || !soilRes.ok || !pmRes.ok) {
-      throw new Error("Salah satu API history gagal");
-    }
-  const periode = document.getElementById("filterPeriode")?.value || "24h";
-
-  await fetchRiwayatData(periode);
-}
-
-// ===================================
-// FETCH DATA BERDASARKAN PERIODE
-// ===================================
-async function fetchRiwayatData(periode) {
-  try {
-    showLoading(true);
-
-    const baseUrl = "http://192.168.88.99:1880/api/history";
-
-    const urls = [
-      `${baseUrl}?sensor=temperature&period=${periode}`,
-      `${baseUrl}?sensor=humidity&period=${periode}`,
-      `${baseUrl}?sensor=soil_humidity&period=${periode}`,
-      `${baseUrl}?sensor=pm25&period=${periode}`,
-    ];
-
-    console.log("=== FETCH RIWAYAT ===");
-    console.log("Periode:", periode);
-    console.log("Temperature:", urls[0]);
-    console.log("Humidity:", urls[1]);
-    console.log("Soil:", urls[2]);
-    console.log("PM2.5:", urls[3]);
-
-    const [tempRes, humRes, soilRes, pmRes] = await Promise.all(
-      urls.map((url) =>
-        fetch(url, {
-          cache: "no-store",
-        }),
-      ),
+    riwayatData = mergeSensorData(
+      temperature,
+      humidity,
+      soil,
+      pm25
     );
 
-    console.log("Status:");
-    console.log("Temperature:", tempRes.status);
-    console.log("Humidity:", humRes.status);
-    console.log("Soil:", soilRes.status);
-    console.log("PM2.5:", pmRes.status);
-
-    if (!tempRes.ok || !humRes.ok || !soilRes.ok || !pmRes.ok) {
-      throw new Error("Salah satu API history gagal");
-    }
-
-    const temperature = await tempRes.json();
-    const humidity = await humRes.json();
-    const soil = await soilRes.json();
-    const pm25 = await pmRes.json();
-
-    console.log("Data Temperature:", temperature);
-    console.log("Data Humidity:", humidity);
-    console.log("Data Soil:", soil);
-    console.log("Data PM2.5:", pm25);
-    console.log("Data Temperature:", temperature);
-    console.log("Data Humidity:", humidity);
-    console.log("Data Soil:", soil);
-    console.log("Data PM2.5:", pm25);
-
-    // Gabungkan berdasarkan timestamp
-    // Gabungkan berdasarkan timestamp
-    riwayatData = mergeSensorData(temperature, humidity, soil, pm25);
-
-    // Awalnya semua data ditampilkan
-    // Awalnya semua data ditampilkan
     filteredData = [...riwayatData];
+    currentPage = 1;
 
     console.log("=== HASIL GABUNGAN ===");
     console.table(riwayatData);
-
-    currentPage = 1;
-    console.log("=== HASIL GABUNGAN ===");
-    console.table(riwayatData);
-
-    currentPage = 1;
 
     updateHistoricalChart(filteredData);
     updateStatistics(filteredData);
     renderTable();
-  } catch (error) {
-    console.error("Gagal mengambil data riwayat:", error);
+
   } catch (error) {
     console.error("Gagal mengambil data riwayat:", error);
 
     riwayatData = [];
     filteredData = [];
-    riwayatData = [];
-    filteredData = [];
 
-    updateHistoricalChart([]);
-    updateStatistics([]);
     updateHistoricalChart([]);
     updateStatistics([]);
     renderTable();
-  } finally {
+
   } finally {
     showLoading(false);
   }
 }
 
+
+
+
+
 // ===================================
 // MERGE SENSOR DATA
 // ===================================
@@ -217,6 +153,8 @@ function mergeSensorData(temp, hum, soil, pm25) {
   function addData(rows, field) {
     rows.forEach((row) => {
       const timestamp = row.timestamp;
+
+      if (!timestamp) return;
 
       if (!dataMap.has(timestamp)) {
         dataMap.set(timestamp, {
@@ -230,41 +168,16 @@ function mergeSensorData(temp, hum, soil, pm25) {
       }
 
       const item = dataMap.get(timestamp);
+      const value = Number(row.value);
 
-      item[field] = Number(row.value);
+      item[field] = Number.isFinite(value) ? value : null;
 
-      // Ambil nilai IKL
       if (row.ikl !== null && row.ikl !== undefined) {
-        item.skor = Number(row.ikl);
-      }
-// ===================================
-// MERGE SENSOR DATA
-// ===================================
-function mergeSensorData(temp, hum, soil, pm25) {
-  const dataMap = new Map();
+        const ikl = Number(row.ikl);
 
-  function addData(rows, field) {
-    rows.forEach((row) => {
-      const timestamp = row.timestamp;
-
-      if (!dataMap.has(timestamp)) {
-        dataMap.set(timestamp, {
-          tanggal: timestamp,
-          suhu: null,
-          rh: null,
-          soil: null,
-          pm25: null,
-          skor: null,
-        });
-      }
-
-      const item = dataMap.get(timestamp);
-
-      item[field] = Number(row.value);
-
-      // Ambil nilai IKL
-      if (row.ikl !== null && row.ikl !== undefined) {
-        item.skor = Number(row.ikl);
+        if (Number.isFinite(ikl)) {
+          item.skor = ikl;
+        }
       }
     });
   }
@@ -275,17 +188,12 @@ function mergeSensorData(temp, hum, soil, pm25) {
   addData(pm25, "pm25");
 
   return Array.from(dataMap.values()).sort(
-    (a, b) => new Date(a.tanggal) - new Date(b.tanggal),
-  );
-  addData(temp, "suhu");
-  addData(hum, "rh");
-  addData(soil, "soil");
-  addData(pm25, "pm25");
-
-  return Array.from(dataMap.values()).sort(
-    (a, b) => new Date(a.tanggal) - new Date(b.tanggal),
+    (a, b) =>
+      new Date(a.tanggal).getTime() -
+      new Date(b.tanggal).getTime()
   );
 }
+
 
 function parseCSV(csvText) {
   const lines = csvText.trim().split("\n");
@@ -486,75 +394,65 @@ function formatDate(timestamp) {
   return d.toLocaleString("id-ID");
   if (isNaN(d.getTime())) return "-";
 
-  const periode = document.getElementById("filterPeriode")?.value || "24h";
 
-  if (periode === "24h") {
-    return d.toLocaleTimeString("id-ID", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
+ 
 
-  if (periode === "weekly") {
-    return d.toLocaleString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  }
 
-  if (periode === "monthly") {
-    return d.toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-    });
-  }
-
-  if (periode === "yearly") {
-    return d.toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
 
   return d.toLocaleString("id-ID");
 }
+
 
 // ===================================
 // STATISTICS
 // ===================================
 function updateStatistics(data) {
-  if (data.length === 0) return;
+  function calculateAverage(field) {
+    const values = data
+      .map((item) => item[field])
+      .filter((value) =>
+        value !== null &&
+        value !== undefined &&
+        Number.isFinite(Number(value))
+      )
+      .map(Number);
 
-  const avgSuhu =
-    data.reduce((sum, d) => sum + parseFloat(d.suhu), 0) / data.length;
-  const avgRh =
-    data.reduce((sum, d) => sum + parseFloat(d.rh), 0) / data.length;
-  const avgSoil =
-    data.reduce((sum, d) => sum + parseFloat(d.soil), 0) / data.length;
-  const avgPm25 =
-    data.reduce((sum, d) => sum + parseFloat(d.pm25), 0) / data.length;
-  const avgSkor =
-    data.reduce((sum, d) => sum + parseFloat(d.skor), 0) / data.length;
+    if (values.length === 0) return null;
 
-  document.getElementById("statSuhu").textContent = avgSuhu.toFixed(1) + " °C";
-  document.getElementById("statRh").textContent = avgRh.toFixed(0) + " %";
-  document.getElementById("statSoil").textContent = avgSoil.toFixed(0) + " %";
+    return values.reduce((sum, value) => sum + value, 0) /
+      values.length;
+  }
+
+  const avgSuhu = calculateAverage("suhu");
+  const avgRh = calculateAverage("rh");
+  const avgSoil = calculateAverage("soil");
+  const avgPm25 = calculateAverage("pm25");
+  const avgSkor = calculateAverage("skor");
+
+  document.getElementById("statSuhu").textContent =
+    avgSuhu !== null ? avgSuhu.toFixed(1) + " °C" : "--";
+
+  document.getElementById("statRh").textContent =
+    avgRh !== null ? avgRh.toFixed(1) + " %" : "--";
+
+  document.getElementById("statSoil").textContent =
+    avgSoil !== null ? avgSoil.toFixed(1) + " %" : "--";
+
   document.getElementById("statPm25").textContent =
-    avgPm25.toFixed(0) + " µg/m³";
+    avgPm25 !== null ? avgPm25.toFixed(1) + " µg/m³" : "--";
 
-  // Determine dominant category
-  let kategori = "Baik";
-  if (avgSkor >= 70) kategori = "Baik";
-  else if (avgSkor >= 50) kategori = "Sedang";
-  else kategori = "Buruk";
+  let kategori = "--";
+
+  if (avgSkor !== null) {
+    if (avgSkor >= 70) kategori = "Baik";
+    else if (avgSkor >= 50) kategori = "Sedang";
+    else kategori = "Buruk";
+  }
 
   document.getElementById("statKategori").textContent = kategori;
 }
+
+
 
 // ===================================
 // TABLE
@@ -564,45 +462,40 @@ function renderTable() {
   if (!tbody) return;
 
   const start = (currentPage - 1) * rowsPerPage;
-  const end = start + rowsPerPage;
-  const pageData = filteredData.slice(start, end);
+  const pageData = filteredData.slice(start, start + rowsPerPage);
+
+  function formatValue(value, decimal = 2) {
+    if (
+      value === null ||
+      value === undefined ||
+      !Number.isFinite(Number(value))
+    ) {
+      return "-";
+    }
+
+    return Number(value).toFixed(decimal);
+  }
 
   tbody.innerHTML = pageData
-    .map(
-      (row) => `
-        <tr>
-            <td>${formatFullDate(row.tanggal)}</td>
-            <td>${row.suhu.toFixed(2)} °C</td>
-            <td>${row.rh.toFixed(2)} %</td>
-            <td>${row.soil.toFixed(2)} %</td>
-            <td>${row.pm25.toFixed(2)} µg/m³</td>
-            <td>
-                <span class="skor-badge ${getSkorClass(row.skor)}">
-                    ${
-                      row.skor !== null &&
-                      row.skor !== undefined &&
-                      !isNaN(Number(row.skor))
-                        ? Number(row.skor).toFixed(2)
-                        : "-"
-                    }
-                </span>
-                <span class="skor-badge ${getSkorClass(row.skor)}">
-                    ${
-                      row.skor !== null &&
-                      row.skor !== undefined &&
-                      !isNaN(Number(row.skor))
-                        ? Number(row.skor).toFixed(2)
-                        : "-"
-                    }
-                </span>
-            </td>
-        </tr>
-    `,
-    )
+    .map((row) => `
+      <tr>
+        <td>${formatFullDate(row.tanggal)}</td>
+        <td>${formatValue(row.suhu)} °C</td>
+        <td>${formatValue(row.rh)} %</td>
+        <td>${formatValue(row.soil)} %</td>
+        <td>${formatValue(row.pm25)} µg/m³</td>
+        <td>
+          <span class="skor-badge ${getSkorClass(row.skor)}">
+            ${formatValue(row.skor)}
+          </span>
+        </td>
+      </tr>
+    `)
     .join("");
 
   updatePagination();
 }
+
 
 function formatFullDate(timestamp) {
   if (!timestamp) return "-";
@@ -713,59 +606,32 @@ function initEventListeners() {
     ?.addEventListener("click", downloadRawData);
 }
 
+
 // ===================================
 // APPLY FILTER
 // ===================================
 async function applyFilter() {
-// ===================================
-// APPLY FILTER
-// ===================================
-async function applyFilter() {
-  const periode = document.getElementById("filterPeriode").value;
+  const periode =
+    document.getElementById("filterPeriode")?.value || "24h";
 
+  const parameter =
+    document.getElementById("filterParameter")?.value || "semua";
 
-  const parameter = document.getElementById("filterParameter").value;
-
-  console.log("=== TERAPKAN FILTER ===");
   console.log("Periode:", periode);
   console.log("Parameter:", parameter);
 
-  // Fetch ulang dari API
-  await fetchRiwayatData(periode);
-  console.log("=== TERAPKAN FILTER ===");
-  console.log("Periode:", periode);
-  console.log("Parameter:", parameter);
-
-  // Fetch ulang dari API
   await fetchRiwayatData(periode);
 
-  // Tampilkan dataset sesuai parameter
   updateChartByParameter(parameter);
-  // Tampilkan dataset sesuai parameter
-  updateChartByParameter(parameter);
-
-  // Reset halaman tabel
-  // Reset halaman tabel
-  currentPage = 1;
-
-
-  renderTable();
 }
 
-// ===================================
-// UPDATE CHART BY PARAMETER
-// ===================================
+
+
 // ===================================
 // UPDATE CHART BY PARAMETER
 // ===================================
 function updateChartByParameter(parameter) {
   if (!historicalChart) return;
-
-  // Semua dataset disembunyikan dulu
-  // Semua dataset disembunyikan dulu
-  historicalChart.data.datasets.forEach((dataset) => {
-    dataset.hidden = true;
-  });
 
   const datasetMap = {
     suhu: 0,
@@ -774,9 +640,10 @@ function updateChartByParameter(parameter) {
     pm25: 3,
   };
 
-  // Jika Semua Sensor
-  if (parameter === "semua") {
-  // Jika Semua Sensor
+  historicalChart.data.datasets.forEach((dataset) => {
+    dataset.hidden = true;
+  });
+
   if (parameter === "semua") {
     historicalChart.data.datasets.forEach((dataset) => {
       dataset.hidden = false;
@@ -787,39 +654,27 @@ function updateChartByParameter(parameter) {
     if (index !== undefined) {
       historicalChart.data.datasets[index].hidden = false;
     }
-  } else {
-    const index = datasetMap[parameter];
-
-    if (index !== undefined) {
-      historicalChart.data.datasets[index].hidden = false;
-    }
   }
 
-  // Label grafik
-  // Label grafik
-  historicalChart.data.labels = filteredData.map((d) => formatDate(d.tanggal));
+  historicalChart.data.labels = filteredData.map((d) =>
+    formatDate(d.tanggal)
+  );
 
-  // Data masing-masing sensor
-  historicalChart.data.datasets[0].data = filteredData.map((d) => d.suhu);
+  historicalChart.data.datasets[0].data =
+    filteredData.map((d) => d.suhu);
 
-  historicalChart.data.datasets[1].data = filteredData.map((d) => d.rh);
+  historicalChart.data.datasets[1].data =
+    filteredData.map((d) => d.rh);
 
-  historicalChart.data.datasets[2].data = filteredData.map((d) => d.soil);
+  historicalChart.data.datasets[2].data =
+    filteredData.map((d) => d.soil);
 
-  historicalChart.data.datasets[3].data = filteredData.map((d) => d.pm25);
-
-
-  // Data masing-masing sensor
-  historicalChart.data.datasets[0].data = filteredData.map((d) => d.suhu);
-
-  historicalChart.data.datasets[1].data = filteredData.map((d) => d.rh);
-
-  historicalChart.data.datasets[2].data = filteredData.map((d) => d.soil);
-
-  historicalChart.data.datasets[3].data = filteredData.map((d) => d.pm25);
+  historicalChart.data.datasets[3].data =
+    filteredData.map((d) => d.pm25);
 
   historicalChart.update("active");
 }
+
 
 // ===================================
 // DOWNLOAD FUNCTIONS
@@ -868,7 +723,7 @@ async function downloadRawData() {
     document.getElementById("filterPeriode")?.value || "24h";
 
   const url =
-    `http://192.168.88.99:1880/api/history/raw?period=${encodeURIComponent(periode)}`;
+    `http://172.16.10.93:1880/api/history/raw?period=${encodeURIComponent(periode)}`;
 
   console.log("=================================");
   console.log("DOWNLOAD DATA RAW");

@@ -1,4 +1,4 @@
-```html
+
 <!doctype html>
 <html lang="id">
   <head>
@@ -233,7 +233,7 @@
         </section>
 
         <!-- ================================= -->
-        <!-- STATUS LINGKUNGAN & RATA-RATA IKL -->
+        <!-- STATUS LINGKUNGAN & RATA-RATA Status Lingkungan -->
         <!-- ================================= -->
         <div class="row g-4 mt-0">
 
@@ -242,7 +242,7 @@
             <div class="panel status-panel">
 
               <div class="panel-header">
-                <h3>Status Lingkungan</h3>
+                <h3> Konsentrasi Status Lingkungan</h3>
 
                 <span class="last-update" id="lastUpdate">
                   Terakhir diperbarui: --
@@ -316,41 +316,70 @@
             </div>
           </div>
 
-          <!-- Rata-rata IKL 24 Jam -->
-          <div class="col-12 col-lg-6">
-            <div class="panel average-panel">
 
-              <div class="panel-header">
-                <h3>Rata-rata IKL 24 Jam</h3>
-              </div>
+        
+        <!-- Rata-rata PM2.5 dan ISPU -->
+        <div class="col-12 col-lg-6">
+          <div class="panel average-panel">
+            <div class="panel-header">
+              <h3>Index Status Lingkungan dalam 24 Jam</h3>
+            </div>
 
-              <div class="panel-body">
-                <div class="indicator-card" data-indicator="average">
+            <div class="panel-body">
+              <div class="ispu-card">
 
-                  <div class="card-icon">
-                    <svg viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2">
-                      <path d="M3 3v18h18" />
-                      <path d="m19 9-5 5-4-4-5 5" />
-                    </svg>
+                <!-- Header -->
+                <div class="ispu-card-header">
+
+                  <div>
+                    <span class="ispu-label">Nilai ISPU PM2.5</span>
+                    <!-- <span class="ispu-subtitle">Parameter PM2.5</span> -->
                   </div>
-
-                  <div class="card-content">
-                    <span class="card-label">Skor Rata-rata</span>
-                    <span class="card-value" id="valAverage">--</span>
-                    <span class="card-unit">/ 100</span>
-                    <small id="averageCount">0 data</small>
-                  </div>
-
-                  <div class="card-trend trend-good">
-                    <span id="averageCategory">--</span>
-                  </div>
-
                 </div>
-              </div>
 
+                <!-- Nilai ISPU -->
+                <div class="ispu-main">
+                  <div class="ispu-value-wrapper">
+                    <span class="ispu-value" id="valISPU">--</span>
+                    <span class="ispu-unit">ISPU</span>
+                  </div>
+
+                  <div class="ispu-category-wrapper">
+                    <span class="ispu-category-label">Kategori</span>
+                    <span id="averageCategory" class="badge">
+                      Menunggu data...
+                    </span>
+                  </div>
+                </div>
+
+                <!-- PM2.5 -->
+                <!-- <div class="ispu-pm25">
+                  <div>
+                    <span class="pm25-label">Rata-rata konsentrasi PM2.5</span>
+                    <div class="pm25-value">
+                      <span id="valAverage">--</span>
+                      <small>µg/m³</small>
+                    </div>
+                  </div>
+
+                  <div class="pm25-icon">
+                    <i class="fas fa-smog"></i>
+                  </div>
+                </div> -->
+
+                
+
+              </div>
+              <!-- Informasi data -->
+                <div class="ispu-footer">
+                  <i class="fas fa-clock"></i>
+                  <span id="averageCount">Menunggu data pengukuran...</span>
+                </div>
             </div>
           </div>
+        </div>
+
+
 
         </div>
 
@@ -441,4 +470,3 @@
 
   </body>
 </html>
-```

@@ -12,7 +12,7 @@ let map = null;
 let currentChartData = "suhu";
 let realtimeData = [];
 let latestSensorData = null;
-let iklHistoryData = [];
+let pm25HistoryData = [];
 
 // Node IoT Locations
 const iotNodes = [
@@ -121,70 +121,68 @@ async function loadRealtimeData() {
 
     const sensor = sensorMap[currentChartData];
 
-    console.log("Sensor yang dipilih:", sensor);
+    // Ambil latest, history grafik, dan history PM2.5
+    const [latestResponse, historyResponse, pm25Response] =
+      await Promise.all([
+        fetch("http://172.16.10.93:1880/api/latest", {
+          cache: "no-store",
+        }),
 
-    // Ambil data latest dan history sensor
-    const [latestResponse, historyResponse] = await Promise.all([
-      fetch("http://172.16.10.93:1880/api/latest", {
-        cache: "no-store",
-      }),
+        fetch(
+          `http://172.16.10.93:1880/api/history?sensor=${sensor}`,
+          { cache: "no-store" }
+        ),
 
-      fetch(
-        `http://172.16.10.93:1880/api/history?sensor=${sensor}`,
-        { cache: "no-store" }
-      ),
-    ]);
+        sensor === "pm25"
+          ? Promise.resolve(null)
+          : fetch(
+              "http://172.16.10.93:1880/api/history?sensor=pm25",
+              { cache: "no-store" }
+            ),
+      ]);
 
-    console.log("Latest status:", latestResponse.status);
-    console.log("History status:", historyResponse.status);
-
-    if (!latestResponse.ok) {
-      throw new Error("Gagal mengambil data latest");
+    if (!latestResponse.ok || !historyResponse.ok) {
+      throw new Error("Gagal mengambil data dashboard");
     }
 
-    if (!historyResponse.ok) {
-      throw new Error("Gagal mengambil history sensor");
+    if (pm25Response && !pm25Response.ok) {
+      throw new Error("Gagal mengambil history PM2.5");
     }
 
     const latest = await latestResponse.json();
     const history = await historyResponse.json();
 
-    console.log("LATEST:");
-    console.log(latest);
+    const pm25History =
+      sensor === "pm25"
+        ? history
+        : await pm25Response.json();
 
-    console.log("HISTORY:");
-    console.table(history);
-
-    if (!latest) {
-      throw new Error("Latest kosong");
+    if (!Array.isArray(history) || !Array.isArray(pm25History)) {
+      throw new Error("Format history bukan array");
     }
 
-    if (!Array.isArray(history)) {
-      throw new Error("History bukan array");
-    }
-
-    // Simpan data latest
     latestSensorData = latest;
 
-   // History sensor untuk grafik
+    // Data untuk grafik
     realtimeData = history.map((item) => ({
       timestamp: item.timestamp,
       value: Number(item.value),
     }));
 
-    // History IKL untuk perhitungan rata-rata
-    iklHistoryData = history
-      .filter((item) => item.ikl !== null && item.ikl !== undefined)
-      .map((item) => ({
-        timestamp: item.timestamp,
-        value: Number(item.ikl),
-      }));
+    // Data khusus PM2.5 untuk perhitungan rata-rata
+    pm25HistoryData = pm25History.map((item) => ({
+      timestamp: item.timestamp,
+      value: Number(item.value),
+    }));
 
-    console.log("REALTIME DATA:");
+    console.log("LATEST:", latest);
+    console.log("HISTORY GRAFIK:");
     console.table(realtimeData);
 
-    updateDashboard();
+    console.log("HISTORY PM2.5:");
+    console.table(pm25HistoryData);
 
+    updateDashboard();
     showLoading(false);
 
   } catch (error) {
@@ -192,7 +190,7 @@ async function loadRealtimeData() {
 
     realtimeData = [];
     latestSensorData = null;
-    iklHistoryData = [];
+    pm25HistoryData = [];
 
     showEmptyDashboard();
     showLoading(false);
@@ -200,12 +198,14 @@ async function loadRealtimeData() {
 }
 
 // ===================================
-// AVERAGE IKL 24 HOURS
+// AVERAGE PM2.5 AND ISPU 24 HOURS
 // ===================================
-function calculateAverageIKL(data) {
+
+function calculateAveragePM25(data) {
   const now = Date.now();
   const last24Hours = now - 24 * 60 * 60 * 1000;
 
+  // Filter data 24 jam terakhir
   const filteredData = data.filter((item) => {
     const timestamp = new Date(item.timestamp).getTime();
     const value = Number(item.value);
@@ -217,55 +217,187 @@ function calculateAverageIKL(data) {
       item.value !== null &&
       item.value !== undefined &&
       item.value !== "" &&
-      Number.isFinite(value)
+      Number.isFinite(value) &&
+      value >= 0
     );
   });
 
-  if (filteredData.length === 0) {
+  // Kelompokkan data berdasarkan jam
+  const hourlyGroups = {};
+
+  filteredData.forEach((item) => {
+    const timestamp = new Date(item.timestamp).getTime();
+    const hour = Math.floor(timestamp / (60 * 60 * 1000));
+    const value = Number(item.value);
+
+    if (!hourlyGroups[hour]) {
+      hourlyGroups[hour] = [];
+    }
+
+    hourlyGroups[hour].push(value);
+  });
+
+  // Hitung rata-rata setiap jam
+  const hourlyAverages = Object.values(hourlyGroups).map((values) => {
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  });
+
+  if (hourlyAverages.length === 0) {
     return {
       average: null,
       count: 0,
+      totalRecords: 0,
     };
   }
 
-  const total = filteredData.reduce(
-    (sum, item) => sum + Number(item.value),
-    0
-  );
+  // Rata-rata dari seluruh jam yang tersedia
+  const average =
+    hourlyAverages.reduce((sum, value) => sum + value, 0) /
+    hourlyAverages.length;
 
   return {
-    average: total / filteredData.length,
-    count: filteredData.length,
+    average,
+    count: hourlyAverages.length,
+    totalRecords: filteredData.length,
   };
 }
 
-function updateAverageIKL() {
-  const result = calculateAverageIKL(iklHistoryData);
+// ===================================
+// CONVERT PM2.5 TO ISPU
+// ===================================
+
+function calculateISPU_PM25(pm25) {
+  if (!Number.isFinite(pm25) || pm25 < 0) {
+    return null;
+  }
+
+  // Konsentrasi maksimum dalam tabel breakpoint
+  const concentration = Math.min(pm25, 500);
+
+  const breakpoints = [
+    { cLow: 0, cHigh: 15.5, iLow: 0, iHigh: 50 },
+    { cLow: 15.5, cHigh: 55.4, iLow: 50, iHigh: 100 },
+    { cLow: 55.4, cHigh: 150.4, iLow: 100, iHigh: 200 },
+    { cLow: 150.4, cHigh: 250.4, iLow: 200, iHigh: 300 },
+    { cLow: 250.4, cHigh: 500, iLow: 300, iHigh: 500 },
+  ];
+
+  const range = breakpoints.find(
+    (item) =>
+      concentration >= item.cLow &&
+      concentration <= item.cHigh
+  );
+
+  if (!range) return null;
+
+  const ispu =
+    ((range.iHigh - range.iLow) /
+      (range.cHigh - range.cLow)) *
+      (concentration - range.cLow) +
+    range.iLow;
+
+  return Math.round(ispu);
+}
+
+// ===================================
+// ISPU CATEGORY
+// ===================================
+
+function getISPUCategory(ispu) {
+  if (!Number.isFinite(ispu)) {
+    return {
+      label: "Data tidak tersedia",
+      className: "",
+    };
+  }
+
+  if (ispu <= 50) {
+    return {
+      label: "Baik",
+      className: "baik",
+    };
+  }
+
+  if (ispu <= 100) {
+    return {
+      label: "Sedang",
+      className: "sedang",
+    };
+  }
+
+  if (ispu <= 200) {
+    return {
+      label: "Tidak Sehat",
+      className: "tidak-sehat",
+    };
+  }
+
+  if (ispu <= 300) {
+    return {
+      label: "Sangat Tidak Sehat",
+      className: "sangat-tidak-sehat",
+    };
+  }
+
+  return {
+    label: "Berbahaya",
+    className: "berbahaya",
+  };
+}
+
+// ===================================
+// UPDATE AVERAGE PM2.5 AND ISPU
+// ===================================
+
+function updateAveragePM25() {
+  const result = calculateAveragePM25(pm25HistoryData);
 
   const averageElement = document.getElementById("valAverage");
+  const ispuElement = document.getElementById("valISPU");
   const categoryElement = document.getElementById("averageCategory");
   const countElement = document.getElementById("averageCount");
 
+  if (result.average === null) {
+    if (averageElement) averageElement.textContent = "-";
+    if (ispuElement) ispuElement.textContent = "-";
+
+    if (categoryElement) {
+      categoryElement.textContent = "Data tidak tersedia";
+      categoryElement.className = "";
+    }
+
+    if (countElement) {
+      countElement.textContent = "Belum ada data PM2.5";
+    }
+
+    return;
+  }
+
+  const ispu = calculateISPU_PM25(result.average);
+  const category = getISPUCategory(ispu);
+
   if (averageElement) {
-    averageElement.textContent =
-      result.average === null
-        ? "-"
-        : result.average.toFixed(1);
+    averageElement.textContent = result.average.toFixed(1);
+  }
+
+  if (ispuElement) {
+    ispuElement.textContent = ispu;
   }
 
   if (categoryElement) {
-    categoryElement.textContent =
-      result.average === null
-        ? "Data tidak tersedia"
-        : "Rata-rata 24 jam";
+    categoryElement.textContent = category.label;
+    categoryElement.className = `badge ${category.className}`;
   }
 
   if (countElement) {
-    countElement.textContent = `${result.count} data`;
+    countElement.textContent =
+      `${result.count} jam terukur dari 24 jam terakhir ` +
+      `(${result.totalRecords} data sensor)`;
   }
 
-  console.log("RATA-RATA IKL 24 JAM:");
-  console.log(result);
+  console.log("RATA-RATA PM2.5:", result);
+  console.log("NILAI ISPU:", ispu);
+  console.log("KATEGORI ISPU:", category.label);
 }
 
 // ===================================
@@ -284,8 +416,10 @@ function showEmptyDashboard() {
     "circleValSoil",
     "circleValPm25",
     "valAverage",
+    "valISPU",
     "averageCategory",
     "averageCount",
+    
   ];
 
   sensorElements.forEach((id) => {
@@ -409,8 +543,8 @@ function updateDashboard() {
   // IKL terbaru
   updateStatus(latest);
 
-  // Rata-rata IKL 24 jam
-  updateAverageIKL();
+  // Rata-rata PM2.5 dan ISPU
+  updateAveragePM25();
 
   // Grafik history sensor
   updateChart(realtimeData);
