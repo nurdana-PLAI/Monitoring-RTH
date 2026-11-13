@@ -1,3 +1,3 @@
-from .engine import FISEngine
+from .engine import FISEngine, HierarchicalFISEngine
 
-__all__ = ["FISEngine"]
+__all__ = ["FISEngine", "HierarchicalFISEngine"]

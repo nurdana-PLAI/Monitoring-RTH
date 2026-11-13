@@ -127,11 +127,13 @@ async function loadRealtimeData() {
     console.log("Sensor yang dipilih:", sensor);
 
     const [latestResponse, historyResponse] = await Promise.all([
-      fetch("http://192.168.88.99:1880/api/latest", {
+      // fetch("http://localhost:1880/api/latest", {
+      fetch("http://172.16.10.93:1880/api/latest", {
         cache: "no-store",
       }),
 
-      fetch(`http://192.168.88.99:1880/api/history?sensor=${sensor}`, {
+      // fetch(`http://localhost:1880/api/history?sensor=${sensor}`, {
+      fetch(`http://172.16.10.93:1880/api/history?sensor=${sensor}`, {
         cache: "no-store",
       }),
     ]);
@@ -381,15 +383,60 @@ function animateValue(element, start, end) {
 // ===================================
 // STATUS UPDATE
 // ===================================
+
 function updateStatus(data) {
   const skor = parseFloat(data.skor);
-  const kategori = data.kategori;
+  const kategoriRaw = String(data.kategori ?? "").trim();
 
   const gaugeFill = document.getElementById("gaugeFill");
   const gaugeValue = document.getElementById("gaugeValue");
+  const statusBadge = document.getElementById("statusBadge");
+  const valKategori = document.getElementById("valKategori");
+  const valSkor = document.getElementById("valSkor");
 
-  // Jika skor tidak tersedia
-  if (isNaN(skor)) {
+  const kategoriMap = {
+    "SangatBuruk": {
+      label: "Sangat Buruk",
+      className: "sangat-buruk",
+    },
+    "Sangat Buruk": {
+      label: "Sangat Buruk",
+      className: "sangat-buruk",
+    },
+    "Buruk": {
+      label: "Buruk",
+      className: "buruk",
+    },
+    "KurangBaik": {
+      label: "Buruk",
+      className: "buruk",
+    },
+    "Kurang Baik": {
+      label: "Buruk",
+      className: "buruk",
+    },
+    "Cukup": {
+      label: "Cukup",
+      className: "cukup",
+    },
+    "Baik": {
+      label: "Baik",
+      className: "baik",
+    },
+    "SangatBaik": {
+      label: "Sangat Baik",
+      className: "sangat-baik",
+    },
+    "Sangat Baik": {
+      label: "Sangat Baik",
+      className: "sangat-baik",
+    },
+  };
+
+  const status = kategoriMap[kategoriRaw];
+
+  // Skor tidak tersedia
+  if (!Number.isFinite(skor)) {
     if (gaugeFill) {
       gaugeFill.style.strokeDasharray = "0, 251";
     }
@@ -398,71 +445,57 @@ function updateStatus(data) {
       gaugeValue.textContent = "-";
     }
 
-    const statusBadge = document.getElementById("statusBadge");
-
     if (statusBadge) {
       statusBadge.className = "status-badge";
 
       const badgeText = statusBadge.querySelector(".badge-text");
-
-      if (badgeText) {
-        badgeText.textContent = "-";
-      }
+      if (badgeText) badgeText.textContent = "-";
     }
 
-    const valKategori = document.getElementById("valKategori");
-    if (valKategori) {
-      valKategori.textContent = "-";
-    }
-
-    const valSkor = document.getElementById("valSkor");
-    if (valSkor) {
-      valSkor.textContent = "-";
-    }
+    if (valKategori) valKategori.textContent = "-";
+    if (valSkor) valSkor.textContent = "-";
 
     return;
   }
 
   // Update gauge
-  if (gaugeFill && gaugeValue) {
+  if (gaugeFill) {
     const maxArc = 251;
     const percentage = Math.max(0, Math.min(skor, 100)) / 100;
     const arcLength = maxArc * percentage;
 
     gaugeFill.style.strokeDasharray = `${arcLength}, 251`;
+  }
+
+  if (gaugeValue) {
     animateValue(gaugeValue, 0, skor);
   }
 
-  // Update status badge
-  const statusBadge = document.getElementById("statusBadge");
-
+  // Update badge kategori
   if (statusBadge) {
     statusBadge.className = "status-badge";
 
-    if (kategori) {
-      statusBadge.classList.add(kategori.toLowerCase());
-    }
-
     const badgeText = statusBadge.querySelector(".badge-text");
 
-    if (badgeText) {
-      badgeText.textContent = kategori || "-";
+    if (status && badgeText) {
+      statusBadge.classList.add(status.className);
+      badgeText.textContent = status.label;
+    } else if (badgeText) {
+      badgeText.textContent = kategoriRaw || "-";
     }
   }
 
-  // Update details
-  const valKategori = document.getElementById("valKategori");
-
   if (valKategori) {
-    valKategori.textContent = kategori || "-";
+    valKategori.textContent = status
+      ? status.label
+      : kategoriRaw || "-";
   }
-
-  const valSkor = document.getElementById("valSkor");
 
   if (valSkor) {
-    valSkor.textContent = skor + "/100";
+    valSkor.textContent = `${skor}/100`;
   }
 }
+
 
 // ===================================
 // CHARTS
@@ -678,8 +711,8 @@ function updateQualityCircles(data) {
       id: "circlePm25",
       valId: "circleValPm25",
       value: parseFloat(data.pm25),
-      max: 100,
-      unit: "",
+      max: 150,
+      unit: " µg/m³",
     },
   ];
 
@@ -699,132 +732,123 @@ function updateQualityCircles(data) {
 // RECOMMENDATIONS
 // ===================================
 
+
 function updateRecommendations(data) {
-    const grid = document.getElementById("recommendationGrid");
+  const container = document.getElementById("recommendationGrid");
+  if (!container) return;
 
-    if (!grid) return;
+  const kategoriRaw = String(data.kategori ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]/g, "");
 
-    if (!data || typeof data !== "object") {
-        grid.innerHTML = `
-            <div class="recommendation-card">
-                <h4>Data Tidak Tersedia</h4>
-                <p>Periksa koneksi sensor dan server.</p>
-            </div>
-        `;
-        return;
-    }
+  const soil = Number(data.soil);
+  const pm25 = Number(data.pm25);
 
-    // Menghindari nilai null atau kosong dianggap sebagai angka 0
-    function getNumber(value) {
-        if (value === null || value === undefined || value === "") {
-            return null;
-        }
+  const sensorValid = (value) => Number.isFinite(value);
 
-        const number = Number(value);
-        return Number.isFinite(number) ? number : null;
-    }
+  const rekomendasiKategori = {
+    sangatburuk: {
+      title: "Kondisi Lingkungan Sangat Buruk",
+      desc: "Periksa kondisi lingkungan dan validitas pembacaan sensor. Identifikasi parameter yang bermasalah, evaluasi kondisi tanah dan vegetasi, serta periksa kemungkinan sumber pencemaran udara untuk menentukan tindakan perbaikan yang sesuai.",
+      icon: "warning",
+    },
 
-    // Sesuaikan dengan nama field dari API /api/latest
-    const suhu = getNumber(data.temperature);
-    const rh = getNumber(data.humidity);
-    const soil = getNumber(data.soil_humidity);
-    const pm25 = getNumber(data.pm25);
+    buruk: {
+      title: "Kondisi Lingkungan Buruk",
+      desc: "Identifikasi parameter lingkungan yang kurang optimal. Periksa kesehatan tanaman dan kelembapan tanah, lakukan penyiraman sesuai kebutuhan tanaman, serta evaluasi kemungkinan sumber pencemaran udara.",
+      icon: "warning",
+    },
 
-    const recommendations = [];
+    kurangbaik: {
+      title: "Kondisi Lingkungan Buruk",
+      desc: "Identifikasi parameter lingkungan yang kurang optimal. Periksa kesehatan tanaman dan kelembapan tanah, lakukan penyiraman sesuai kebutuhan tanaman, serta evaluasi kemungkinan sumber pencemaran udara.",
+      icon: "warning",
+    },
 
-    // 1. SUHU UDARA
-    if (suhu === null) {
-        recommendations.push({
-            title: "Data Suhu Tidak Tersedia",
-            message: "Periksa sensor suhu dan koneksi perangkat.",
-            warning: true
-        });
-    } else if (suhu >= 35) {
-        recommendations.push({
-            title: "Suhu Udara Tinggi",
-            message: "Pantau kondisi area dan evaluasi kebutuhan penambahan naungan atau vegetasi.",
-            warning: true
-        });
-    } else {
-        recommendations.push({
-            title: "Pemantauan Suhu",
-            message: "Lanjutkan pemantauan perubahan suhu udara.",
-            warning: false
-        });
-    }
+    cukup: {
+      title: "Kondisi Lingkungan Cukup",
+      desc: "Lanjutkan pemeliharaan rutin. Perhatikan parameter yang belum optimal, sesuaikan penyiraman dengan kebutuhan tanaman, dan pantau perubahan kualitas udara.",
+      icon: "success",
+    },
 
-    // 2. KELEMBAPAN UDARA
-    if (rh === null) {
-        recommendations.push({
-            title: "Data Kelembapan Udara Tidak Tersedia",
-            message: "Periksa sensor kelembapan udara.",
-            warning: true
-        });
-    } else if (rh < 40) {
-        recommendations.push({
-            title: "Kelembapan Udara Rendah",
-            message: "Pantau kondisi mikroklimat dan kelembapan di sekitar vegetasi.",
-            warning: true
-        });
-    } else {
-        recommendations.push({
-            title: "Pemantauan Kelembapan Udara",
-            message: "Lanjutkan pemantauan kelembapan udara.",
-            warning: false
-        });
-    }
+    baik: {
+      title: "Kondisi Lingkungan Baik",
+      desc: "Pertahankan kondisi lingkungan melalui pemeliharaan vegetasi, pemantauan kelembapan tanah, dan pemeriksaan parameter lingkungan secara berkala.",
+      icon: "success",
+    },
 
-    // 3. KELEMBAPAN TANAH
-    if (soil === null) {
-        recommendations.push({
-            title: "Data Kelembapan Tanah Tidak Tersedia",
-            message: "Periksa sensor kelembapan tanah.",
-            warning: true
-        });
-    } else if (soil < 40) {
-        recommendations.push({
-            title: "Kelembapan Tanah Rendah",
-            message: "Periksa kondisi tanah dan kebutuhan air tanaman sebelum melakukan penyiraman.",
-            warning: true
-        });
-    } else {
-        recommendations.push({
-            title: "Pemantauan Kelembapan Tanah",
-            message: "Lanjutkan pemantauan kelembapan tanah.",
-            warning: false
-        });
-    }
+    sangatbaik: {
+      title: "Kondisi Lingkungan Sangat Baik",
+      desc: "Pertahankan kondisi lingkungan melalui perawatan vegetasi dan pemantauan sensor secara berkala.",
+      icon: "success",
+    },
+  };
 
-    // 4. PM2.5
-    // Ambang 35 µg/m³ di sini hanya pemicu peringatan operasional,
-    // bukan batas resmi untuk menyatakan kualitas udara aman/tidak aman.
-    if (pm25 === null) {
-        recommendations.push({
-            title: "Data PM2.5 Tidak Tersedia",
-            message: "Periksa sensor partikulat dan koneksi perangkat.",
-            warning: true
-        });
-    } else if (pm25 >= 35) {
-        recommendations.push({
-            title: "Pembacaan PM2.5 Meningkat",
-            message: "Periksa tren pembacaan, ulangi pengamatan, dan tinjau kemungkinan sumber partikulat.",
-            warning: true
-        });
-    } else {
-        recommendations.push({
-            title: "Pemantauan PM2.5",
-            message: "Lanjutkan pemantauan dan evaluasi tren konsentrasi partikulat.",
-            warning: false
-        });
-    }
+  const rekomendasi = rekomendasiKategori[kategoriRaw];
 
-    grid.innerHTML = recommendations.map(item => `
-        <div class="recommendation-card">
-            <h4>${item.warning ? "⚠️" : "ℹ️"} ${item.title}</h4>
-            <p>${item.message}</p>
+  if (!rekomendasi) {
+    container.innerHTML = `
+      <div class="recommendation-card">
+        <div class="rec-content">
+          <h4>Rekomendasi Belum Tersedia</h4>
+          <p>
+            Kategori output fuzzy belum tersedia atau tidak dikenali.
+            Periksa data hasil pemrosesan fuzzy dari server.
+          </p>
         </div>
-    `).join("");
+      </div>
+    `;
+    return;
+  }
+
+  const recommendations = [rekomendasi];
+
+  // Informasi tambahan kelembapan tanah
+  // if (sensorValid(soil) && soil >= 0 && soil <= 35) {
+  //   recommendations.push({
+  //     title: "Periksa Kelembapan Tanah",
+  //     desc: "Nilai kelembapan tanah berada pada rentang yang mengindikasikan kondisi kering dalam fungsi keanggotaan fuzzy. Periksa kondisi tanah dan kebutuhan air tanaman sebelum menyiram.",
+  //     icon: "warning",
+  //   });
+  // }
+
+  // Informasi tambahan PM2.5
+  // if (sensorValid(pm25) && pm25 >= 45 && pm25 <= 150) {
+  //   recommendations.push({
+  //     title: "Perhatian pada PM2.5",
+  //     desc: "Nilai PM2.5 berada pada rentang fungsi keanggotaan TidakSehat atau lebih tinggi. Pantau kualitas udara dan evaluasi kemungkinan sumber pencemaran.",
+  //     icon: "warning",
+  //   });
+  // }
+
+  container.innerHTML = recommendations
+    .map((rec) => `
+      <div class="recommendation-card">
+        <div class="rec-icon ${rec.icon}">
+          ${
+            rec.icon === "success"
+              ? `<svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>`
+              : `<svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17.01"/>
+                </svg>`
+          }
+        </div>
+        <div class="rec-content">
+          <h4>${rec.title}</h4>
+          <p>${rec.desc}</p>
+        </div>
+      </div>
+    `)
+    .join("");
 }
+
 
 
 // ===================================

@@ -37,3 +37,42 @@ def test_enrich_payload_adds_fuzzy_ikl() -> None:
     assert result["fuzzy"]["ikl"] == 83.53
     assert result["fuzzy"]["label"] == "Baik"
     assert "fuzzy" not in payload
+
+
+def test_extract_microclimate_inputs_from_sensor_payload() -> None:
+    adapter = SensorPayloadAdapter()
+    payload = {
+        "readings": [
+            {"type": "temperature", "val": 28.5},
+            {"type": "humidity", "val": 62.0},
+            {"type": "soil_humidity", "val": 48.0},
+            {"type": "pm25", "val": 22.0},
+        ],
+    }
+
+    result = adapter.extract_microclimate_inputs(payload)
+
+    assert result == {
+        "SuhuUdara": 28.5,
+        "KelUdara": 62.0,
+        "KelTanah": 48.0,
+    }
+
+
+def test_extract_final_inputs_from_sensor_payload() -> None:
+    adapter = SensorPayloadAdapter()
+    payload = {
+        "readings": [
+            {"type": "temperature", "val": 28.5},
+            {"type": "humidity", "val": 62.0},
+            {"type": "soil_humidity", "val": 48.0},
+            {"type": "pm25", "val": 22.0},
+        ],
+    }
+
+    result = adapter.extract_final_inputs(payload, 77.5)
+
+    assert result == {
+        "IndeksMikro": 77.5,
+        "PM25": 22.0,
+    }

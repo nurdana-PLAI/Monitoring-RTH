@@ -1,21 +1,21 @@
 from pathlib import Path
 
-from src.fis_engine.engine import FISEngine
+from src.fis_engine.engine import FISEngine, HierarchicalFISEngine
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-FIS_PATH = BASE_DIR / "SPK_RTH.fis"
+MICRO_FIS_PATH = BASE_DIR / "RTH_Mikroklimat.fis"
+FINAL_FIS_PATH = BASE_DIR / "RTH_IKL_Final.fis"
 
 
-def test_engine_evaluate_returns_crisp_ikl() -> None:
-    engine = FISEngine(FIS_PATH)
+def test_microclimate_engine_evaluate_returns_crisp_output() -> None:
+    engine = FISEngine(MICRO_FIS_PATH)
 
     result = engine.evaluate(
         {
             "SuhuUdara": 28.5,
             "KelUdara": 62.0,
             "KelTanah": 48.0,
-            "PM25": 22.0,
         }
     )
 
@@ -23,14 +23,12 @@ def test_engine_evaluate_returns_crisp_ikl() -> None:
     assert 0.0 <= result <= 100.0
 
 
-def test_engine_clamps_out_of_range_values() -> None:
-    engine = FISEngine(FIS_PATH)
+def test_final_engine_clamps_out_of_range_values() -> None:
+    engine = FISEngine(FINAL_FIS_PATH)
 
     result = engine.evaluate(
         {
-            "SuhuUdara": 6.43,
-            "KelUdara": 62.92,
-            "KelTanah": 53.33,
+            "IndeksMikro": 115.0,
             "PM25": 159.1,
         }
     )
@@ -40,13 +38,11 @@ def test_engine_clamps_out_of_range_values() -> None:
 
 
 def test_engine_evaluate_all_returns_named_outputs() -> None:
-    engine = FISEngine(FIS_PATH)
+    engine = FISEngine(FINAL_FIS_PATH)
 
     result = engine.evaluate_all(
         {
-            "SuhuUdara": 28.5,
-            "KelUdara": 62.0,
-            "KelTanah": 48.0,
+            "IndeksMikro": 78.0,
             "PM25": 22.0,
         }
     )
@@ -56,7 +52,21 @@ def test_engine_evaluate_all_returns_named_outputs() -> None:
 
 
 def test_engine_evaluate_output_returns_value_and_label() -> None:
-    engine = FISEngine(FIS_PATH)
+    engine = FISEngine(FINAL_FIS_PATH)
+
+    result = engine.evaluate_output(
+        {
+            "IndeksMikro": 78.0,
+            "PM25": 22.0,
+        }
+    )
+
+    assert 0.0 <= result.value <= 100.0
+    assert result.label in {"SangatBuruk", "Buruk", "Cukup", "Baik", "SangatBaik"}
+
+
+def test_hierarchical_engine_evaluate_output_returns_value_and_label() -> None:
+    engine = HierarchicalFISEngine(MICRO_FIS_PATH, FINAL_FIS_PATH)
 
     result = engine.evaluate_output(
         {
@@ -68,4 +78,21 @@ def test_engine_evaluate_output_returns_value_and_label() -> None:
     )
 
     assert 0.0 <= result.value <= 100.0
-    assert result.label in {"Buruk", "KurangBaik", "Cukup", "Baik", "SangatBaik"}
+    assert result.label in {"SangatBuruk", "Buruk", "Cukup", "Baik", "SangatBaik"}
+
+
+def test_hierarchical_engine_evaluate_all_returns_intermediate_and_final_outputs() -> None:
+    engine = HierarchicalFISEngine(MICRO_FIS_PATH, FINAL_FIS_PATH)
+
+    result = engine.evaluate_all(
+        {
+            "SuhuUdara": 28.5,
+            "KelUdara": 62.0,
+            "KelTanah": 48.0,
+            "PM25": 22.0,
+        }
+    )
+
+    assert set(result.keys()) == {"IKL", "IndeksMikro"}
+    assert 0.0 <= result["IndeksMikro"] <= 100.0
+    assert 0.0 <= result["IKL"] <= 100.0
