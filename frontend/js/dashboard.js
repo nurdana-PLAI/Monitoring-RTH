@@ -14,6 +14,10 @@ let realtimeData = [];
 let latestSensorData = null;
 let pm25HistoryData = [];
 
+const API_LOCAL = "http://localhost:1880";
+
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:1880`;
+
 // Node IoT Locations
 const iotNodes = [
   { id: 1, name: "Node 1", lat: -7.787022, lng: 110.387976, status: "active" },
@@ -124,21 +128,19 @@ async function loadRealtimeData() {
     // Ambil latest, history grafik, dan history PM2.5
     const [latestResponse, historyResponse, pm25Response] =
       await Promise.all([
-        fetch("http://172.16.10.93:1880/api/latest", {
+        fetch(`${API_BASE_URL}/api/latest`, {
           cache: "no-store",
         }),
 
-        fetch(
-          `http://172.16.10.93:1880/api/history?sensor=${sensor}`,
-          { cache: "no-store" }
-        ),
+        fetch(`${API_BASE_URL}/api/history?sensor=${sensor}`, {
+          cache: "no-store",
+        }),
 
         sensor === "pm25"
           ? Promise.resolve(null)
-          : fetch(
-              "http://172.16.10.93:1880/api/history?sensor=pm25",
-              { cache: "no-store" }
-            ),
+          : fetch(`${API_BASE_URL}/api/history?sensor=pm25`, {
+            cache: "no-store",
+          }),
       ]);
 
     if (!latestResponse.ok || !historyResponse.ok) {

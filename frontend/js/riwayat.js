@@ -12,6 +12,8 @@ let filteredData = [];
 let currentPage = 1;
 const rowsPerPage = 10;
 
+const API_BASE_URL = `${window.location.protocol}//${window.location.hostname}:1880`;
+
 // ===================================
 // INITIALIZATION
 // ===================================
@@ -66,7 +68,7 @@ async function loadRiwayatData() {
 // FETCH DATA BERDASARKAN PERIODE
 // ===================================
 async function fetchRiwayatData(periode) {
-  const baseUrl = "http://172.16.10.93:1880/api/history";
+  const baseUrl = `${API_BASE_URL}/api/history`;
 
   const urls = {
     temperature: `${baseUrl}?sensor=temperature&period=${periode}`,
@@ -722,8 +724,7 @@ async function downloadRawData() {
   const periode =
     document.getElementById("filterPeriode")?.value || "24h";
 
-  const url =
-    `http://172.16.10.93:1880/api/history/raw?period=${encodeURIComponent(periode)}`;
+    const url = `${API_BASE_URL}/api/history/raw?period=${encodeURIComponent(periode)}`;
 
   console.log("=================================");
   console.log("DOWNLOAD DATA RAW");
