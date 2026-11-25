@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS sensor_readings (
     sensor_id SYMBOL, 
     sensor_type SYMBOL,
     unit SYMBOL,
-    value DOUBLE
+    value DOUBLE,
+    ingested_at TIMESTAMP -- Waktu data ditulis ke QuestDB (untuk menghitung latensi pipeline)
 ) timestamp(timestamp) PARTITION BY DAY;
 
 -- Fuzzy Logic Inference Results

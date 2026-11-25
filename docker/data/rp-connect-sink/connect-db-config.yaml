@@ -43,8 +43,10 @@ pipeline:
     - unarchive:
         format: json_array
     # 4. Generate InfluxDB Line Protocol (ILP) for QuestDB
+    # ingested_at = waktu pesan ini diproses oleh redpanda-connect-sink-db,
+    # dipakai untuk menghitung latensi pipeline (ingested_at - timestamp).
     - bloblang: |
-        root = "sensor_readings,loc_id=%s,sensor_id=%s,sensor_type=%s,unit=%s ikl_label=\"%s\",value=%f,ikl=%f %s".format(
+        root = "sensor_readings,loc_id=%s,sensor_id=%s,sensor_type=%s,unit=%s ikl_label=\"%s\",value=%f,ikl=%f,ingested_at=%st %s".format(
           this.loc_id.string() | "unknown",
           this.sensor_id.string() | "unknown",
           this.sensor_type.string() | "unknown",
@@ -52,6 +54,7 @@ pipeline:
           this.ikl_label.string() | "unknown",
           this.value.float64() | 0.0,
           this.ikl.float64() | 0.0,
+          now().ts_unix_micro().string(),
           (this.timestamp.int64() | 0).string()
         )
 
